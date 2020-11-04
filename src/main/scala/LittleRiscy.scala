@@ -8,17 +8,14 @@ class LittleRiscy extends Module {
   val io = IO(new Bundle {
     val led = Output(UInt(1.W))
   })
-  val CNT_MAX = (50000000 / 2 - 1).U; // 50000000 for FPGA (1 Hz), 100000 for simulation
 
-  val cntReg = RegInit(0.U(32.W))
-  val blkReg = RegInit(0.U(1.W))
+  val controlUnit = Module(new ControlUnit())
+  val memD = Mem(128, UInt(32.W))
+  val memI = Mem(128, UInt(32.W))
 
-  cntReg := cntReg + 1.U
-  when(cntReg === CNT_MAX) {
-    cntReg := 0.U
-    blkReg := ~blkReg
-  }
-  io.led := blkReg
+  memD(32) :=  1.U(32.W)
+
+  io.led := memD(24) === memD(32)
 }
 
 /**
@@ -27,4 +24,5 @@ class LittleRiscy extends Module {
 object ALittleRiscyMain extends App {
   println("I will now generate the Verilog file!")
   chisel3.Driver.execute(Array("--target-dir", "generated"), () => new LittleRiscy())
+  chisel3.Driver.execute(Array("--target-dir", "generated"), () => new ControlUnit())
 }
