@@ -1,2 +1,9 @@
 *.class
 *.log
+/.idea
+/target
+/test_run_dir
+/generated
+/project
+/quartus
+*.iml
