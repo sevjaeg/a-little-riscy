@@ -1,9 +1,12 @@
 *.class
 *.log
+/.bsp
 /.idea
 /target
 /test_run_dir
 /generated
 /project
-/quartus
+/quartus/altde2-115/db
+/quartus/altde2-115/incremental_db
+/quartus/altde2-115/output_files
 *.iml
