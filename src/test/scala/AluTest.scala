@@ -6,10 +6,10 @@ import chisel3.iotesters.PeekPokeTester
  *
  */
 class AluTest(dut: Alu) extends PeekPokeTester(dut) {
-    val a : Int = 15
-    val b : Int = 7
+    val a : Long = -500
+    val b : Long = 2
     for (op <- 0 to 9) {
-        val result : Int =
+        val result =
             op match {
                 case 0 => 0
                 case 1 => a << b
@@ -22,8 +22,7 @@ class AluTest(dut: Alu) extends PeekPokeTester(dut) {
                 case 8 => a ^ b
                 case 9 => a & b
             }
-
-        val resMask = result
+        val resMask = result & 0xffff
 
         poke(dut.io.function, op)
         poke(dut.io.in1, a)
@@ -35,7 +34,7 @@ class AluTest(dut: Alu) extends PeekPokeTester(dut) {
 
 object AluTester extends App {
     println("Testing the ALU")
-    iotesters.Driver.execute(Array[String](), () => new Alu()) {
+    iotesters.Driver.execute(Array("--target-dir", "generated", "--generate-vcd-output", "on"), () => new Alu()) {
         c => new AluTest(c)
     }
 }
