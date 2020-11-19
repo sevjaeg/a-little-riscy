@@ -1,8 +1,12 @@
 SBT = sbt
 
 # Generate Verilog code
-hdl:
-	$(SBT) "run"
+all:
+	$(SBT) "runMain LittleRiscyMain"
+
+memory:
+	$(SBT) "runMain MemoryMain"
+
 
 test-all:
 	$(SBT) "test:runMain LittleRiscyTester"

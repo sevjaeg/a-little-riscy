@@ -19,7 +19,7 @@ class AluTester(dut: Alu) extends PeekPokeTester(dut) {
                 case 3 => a >> b
                 case 4 => a + b
                 case 5 => a - b
-                case 6 => if(a < b) 1 else 0
+                case 6 => if(a < b) 1 else 0  // TODO
                 case 7 => if(a < b) 1 else 0
                 case 8 => a | b
                 case 9 => a ^ b

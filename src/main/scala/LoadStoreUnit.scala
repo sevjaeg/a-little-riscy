@@ -61,7 +61,6 @@ class LoadStoreUnit extends Module {
     }
 
     io.loadedValue := loadedValue
-
     io.memory.address := wordAddress
     io.memory.write := writeEnable
     io.memory.dataIn := dataOut

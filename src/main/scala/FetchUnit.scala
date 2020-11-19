@@ -18,13 +18,6 @@ class FetchUnit extends Module {
         val i2 = Output(UInt(32.W))
     })
     val pc = io.pcIn
-    /*val memI = Wire(Vec(6, UInt(32.W)))
-    memI(0) := "h00000001".U
-    memI(1) := "h00000002".U
-    memI(2) := "h00000003".U
-    memI(3) := "h00000004".U
-    memI(4) := "h00000005".U
-    memI(5) := "h00000006".U*/
 
     // TODO check pc validity
 
