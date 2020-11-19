@@ -4,5 +4,14 @@ SBT = sbt
 hdl:
 	$(SBT) "run"
 
-alu-test:
-	$(SBT) "test:run AluTest"
+test-all:
+	$(SBT) "test:runMain LittleRiscyTester"
+
+test-fetch:
+	$(SBT) "test:runMain FetchTester"
+
+test-alu:
+	$(SBT) "test:runMain AluTester"
+
+test-load-store:
+	$(SBT) "test:runMain LoadStoreTester"
