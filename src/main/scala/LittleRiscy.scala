@@ -16,7 +16,8 @@ class LittleRiscy extends Module {
     val regs = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))  // x0-x31
 
     // Memory
-    val memD = RegInit(VecInit(Seq.fill(64)(0.U(32.W))))  // Data memory
+    //val memD = RegInit(VecInit(Seq.fill(64)(0.U(32.W))))  // Data memory
+    val memD = Module(new Memory())
     val memI = RegInit(VecInit(Seq.fill(64)(0.U(32.W))))  // Instruction memory
     memI(0) := "h00000001".U
     memI(1) := "h00000002".U
@@ -47,9 +48,9 @@ class LittleRiscy extends Module {
 
     // ALU
     val alu = Module(new Alu())
+    alu.io.function := alu_function_reg
     alu.io.in1 := alu_in1_reg
     alu.io.in2 := alu_in2_reg
-    alu.io.function := alu_function_reg
 
     // ALU Out Pipelining Registers
     val alu_out_reg = RegInit(0.U(32.W))
@@ -65,16 +66,19 @@ class LittleRiscy extends Module {
     val loadStore = Module(new LoadStoreUnit())
     loadStore.io.function := ls_function_reg
     loadStore.io.storeValue := ls_store_reg
-    loadStore.io.address := ls_address_reg
-    loadStore.io.offset := ls_offset_reg
-    loadStore.io.memIn := memD(loadStore.io.calculatedAdress)
+    loadStore.io.addressBase := ls_address_reg
+    loadStore.io.addressOffset := ls_offset_reg
+    loadStore.io.memory <> memD.io
+
+    // I think the following can be removed, sanity check pls
+    /*
     val memOut = Output(UInt(32.W))
     when(loadStore.io.writeEnable === true.B) {
         memD(loadStore.io.calculatedAdress) := loadStore.io.memOut
     } .otherwise {
         memD(loadStore.io.calculatedAdress) := memD(loadStore.io.calculatedAdress)
     }
-
+    */
 
     // Load/Store out Pipelining Registers
     val ls_loaded_reg = RegInit(0.U(32.W))
