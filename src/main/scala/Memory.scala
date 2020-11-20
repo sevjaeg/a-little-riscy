@@ -2,6 +2,7 @@
  *
  */
 
+import Chisel.Cat
 import chisel3._
 
 class MemoryIO() extends Bundle {
@@ -9,17 +10,23 @@ class MemoryIO() extends Bundle {
     val dataOut = Output(UInt(32.W))
     val address = Input(UInt(8.W))
     val write = Input(Bool())
+    val writeMask = Input(Vec(4, Bool()))
 }
 
 class Memory extends Module {
     val io = IO(new MemoryIO())
-    val mem = Mem(64, UInt(32.W))
+    val mem = SyncReadMem(64, Vec(4, UInt(8.W)))
 
     when(io.write) {
-        mem(io.address) := io.dataIn
+        val data = Wire(Vec(4, UInt(8.W)))
+        for (idx <- 0 to 3) {
+            data(idx) := io.dataIn(31 - idx * 8, 24 - idx * 8)
+        }
+        mem.write(io.address, data, io.writeMask)
         io.dataOut := 0.U
     } .otherwise {
-        io.dataOut := mem(io.address)
+        val data = mem.read(io.address, true.B)
+        io.dataOut := Cat(data(3), data(2), data(1), data(0))
     }
 }
 
