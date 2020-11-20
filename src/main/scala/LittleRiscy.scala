@@ -30,6 +30,7 @@ class LittleRiscy extends Module {
 
 
     // Fetch Unit
+    // TODO <> instruction memory <-> fetch unit
     val fetchUnit = Module(new FetchUnit())
     instructionMemory.io.port1.address := fetchUnit.io.addr1
     instructionMemory.io.port2.address := fetchUnit.io.addr2
@@ -53,7 +54,7 @@ class LittleRiscy extends Module {
 
 
     // ALU In Pipelining Registers
-    val aluFunctionReg =  RegInit(0.U(4.W))
+    val aluFunctionReg =  RegInit(0.U(5.W))
     val aluIn1Reg =       RegInit(0.U(32.W))
     val aluIn2Reg =       RegInit(0.U(32.W))
     val aluRdReg =        RegInit(0.U(5.W))

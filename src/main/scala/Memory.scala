@@ -15,17 +15,17 @@ class MemoryIO() extends Bundle {
 
 class Memory extends Module {
     val io = IO(new MemoryIO())
-    val mem = SyncReadMem(64, Vec(4, UInt(8.W)))
+    val mem = Mem(64, Vec(4, UInt(8.W)))
 
     when(io.write) {
         val data = Wire(Vec(4, UInt(8.W)))
         for (idx <- 0 to 3) {
-            data(idx) := io.dataIn(31 - idx * 8, 24 - idx * 8)
+            data(idx) := io.dataIn((idx+1) * 8 - 1, idx * 8)
         }
         mem.write(io.address, data, io.writeMask)
         io.dataOut := 0.U
     } .otherwise {
-        val data = mem.read(io.address, true.B)
+        val data = mem.read(io.address)
         io.dataOut := Cat(data(3), data(2), data(1), data(0))
     }
 }

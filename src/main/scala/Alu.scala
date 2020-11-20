@@ -18,8 +18,6 @@ class Alu extends Module {
 
     val result = Wire(UInt(32.W))
 
-    // TODO LUI, AUIPC
-
     when(function === 1.U){  // logical shift left: SLLI
         result := (in1 << in2(4,0))(31,0)
     } .elsewhen(function === 2.U) {  // logical shift right: SRLI
@@ -43,6 +41,10 @@ class Alu extends Module {
         result := in1 ^ in2
     } .elsewhen(function === 10.U) { // AND: ANDI
         result := in1 & in2
+    } .elsewhen(function === 11.U) { // Load upper immediate: LUI
+        result := in1 | (in2(19, 0) << 12)  // TODO in1 = rd
+    } .elsewhen(function === 12.U) { // add upper immediate to pc: AUIPC
+        result := in1 + (in2(19, 0) << 12)  // TODO in1 = pc of AUIPC instruction
     } .otherwise {  // NOP
         result := 0.U
     }
