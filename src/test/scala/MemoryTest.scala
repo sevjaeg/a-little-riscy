@@ -9,10 +9,13 @@ class MemoryTest(dut: Memory) extends PeekPokeTester(dut) {
     val data : Int = 12
     val address : Int = 4
 
+    //val writeMask = Vector(true, true, true, true)
+
     // Write to memory
     poke(dut.io.write, true)
     poke(dut.io.address, address)
     poke(dut.io.dataIn, data)
+    //poke(dut.io.writeMask, writeMask)
     step(1)
 
     // Check if output was zero for read
