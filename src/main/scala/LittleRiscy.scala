@@ -9,33 +9,45 @@ class LittleRiscy extends Module {
     val io = IO(new Bundle {
         val sw = Input(UInt(16.W))
         val led = Output(UInt(16.W))
+        val i1 = Output(UInt(32.W))
+        val i2 = Output(UInt(32.W))
+        val aluIn1 = Input(UInt(32.W))
+        val aluIn2 = Input(UInt(32.W))
+        val aluFn = Input(UInt(4.W))
+        val aluRd = Input(UInt(32.W))
+        val aluRes = Output(UInt(32.W))
     })
 
     // Registers
-    val registers = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))  // x0-x31
-    val pc = RegInit(0.U(32.W))
+    val registers = Module(new Registers())
+    val pc = registers.io.pc
+    val registersAlu = registers.io.portAlu
+    val registersLoadStore = registers.io.portLoadStore
 
     // Memory
     val dataMemory = Module(new Memory())
-    val instructionMemory = RegInit(VecInit(Seq.fill(64)(0.U(32.W))))
-    instructionMemory(0) := "h00000001".U
-    instructionMemory(1) := "h00000002".U
-    instructionMemory(2) := "h00000003".U
-    instructionMemory(3) := "h00000004".U
-    instructionMemory(4) := "h00000005".U
-    instructionMemory(5) := "h00000006".U
+    val instructionMemory = Module(new InstructionMemory())
+
 
     // Fetch Unit
     val fetchUnit = Module(new FetchUnit())
-    fetchUnit.io.val1 := instructionMemory(fetchUnit.io.addr1)
-    fetchUnit.io.val2 := instructionMemory(fetchUnit.io.addr2)
+    instructionMemory.io.port1.address := fetchUnit.io.addr1
+    instructionMemory.io.port2.address := fetchUnit.io.addr2
+    fetchUnit.io.val1 := instructionMemory.io.port1.value
+    fetchUnit.io.val2 := instructionMemory.io.port2.value
     fetchUnit.io.pcIn := pc
-    pc := fetchUnit.io.pcOut
+    registers.io.newPc := fetchUnit.io.pcOut
     val instruction1 = fetchUnit.io.i1
     val instruction2 = fetchUnit.io.i2
 
-    // Instruction Queue
 
+
+    // Instruction Queue
+    val instructionReg = RegInit(0.U(32.W))
+    instructionReg := instruction1
+    // Debug output
+    io.i1 := instructionReg
+    io.i2 := instruction2
 
     // Dispatcher
 
@@ -44,6 +56,7 @@ class LittleRiscy extends Module {
     val aluFunctionReg =  RegInit(0.U(4.W))
     val aluIn1Reg =       RegInit(0.U(32.W))
     val aluIn2Reg =       RegInit(0.U(32.W))
+    val aluRdReg =        RegInit(0.U(5.W))
 
     // ALU
     val alu = Module(new Alu())
@@ -52,14 +65,17 @@ class LittleRiscy extends Module {
     alu.io.in2 := aluIn2Reg
 
     // ALU Out Pipelining Registers
-    val aluOutReg = RegInit(0.U(32.W))
-    aluOutReg := alu.io.result
+    val aluResultReg = RegInit(0.U(32.W))
+    val aluOutRdReg =      RegInit(0.U(5.W))
+    aluResultReg := alu.io.result
+    aluOutRdReg := aluRdReg
 
     // Load/Store In Pipelining Registers
     val loadStoreFunctionReg = RegInit(0.U(3.W))
     val loadStoreStoreReg =    RegInit(0.U(32.W))
     val loadStoreAddressReg =  RegInit(0.U(32.W))
     val loadStoreOffsetReg =   RegInit(0.U(12.W))
+    val loadStoreRdReg =       RegInit(0.U(5.W))
 
     // Load/Store
     val loadStore = Module(new LoadStoreUnit())
@@ -70,17 +86,35 @@ class LittleRiscy extends Module {
     loadStore.io.memory <> dataMemory.io
 
     // Load/Store out Pipelining Registers
-    val ls_loaded_reg = RegInit(0.U(32.W))
-    ls_loaded_reg := loadStore.io.loadedValue
+    val loadStoreOutReg = RegInit(0.U(32.W))
+    val loadStoreOutRdReg = RegInit(0.U(5.W))
+    loadStoreOutReg := loadStore.io.loadedValue
+    loadStoreOutRdReg := loadStoreRdReg
 
-    // Write Back Unit
+    // Write Back
+    // TODO check if not 0
+    // TODO check of different addresses
+    registers.io.portAlu.rdAddress := aluOutRdReg
+    registers.io.portAlu.rdValue := aluResultReg
+    registers.io.portLoadStore.rdAddress := loadStoreOutRdReg
+    registers.io.portLoadStore.rdValue := loadStoreOutReg
 
     // Debug with LEDs and Switches
-    aluFunctionReg := io.sw(3,0)
-    aluIn1Reg := io.sw(9,4)
-    aluIn2Reg := io.sw(15,10)
+    registersAlu.r1Address := io.sw(7,4)
+    registersAlu.r2Address := io.sw(7,4)
+    registersLoadStore.r1Address := io.sw(11,8)
+    registersLoadStore.r2Address := io.sw(11,8)
+    loadStoreRdReg := io.sw(15,12)
+    loadStoreFunctionReg := 3.U
+    loadStoreAddressReg := io.sw(15,13)
 
-    io.led := Cat(instruction1(3, 0), instruction2(3, 0), aluOutReg(7, 0))
+    aluFunctionReg := io.aluFn
+    aluIn1Reg := io.aluIn1
+    aluIn2Reg := io.aluIn2
+    aluRdReg := io.aluRd
+    io.aluRes := registersAlu.rdValue
+
+    io.led := Cat(instruction1(3, 0), instruction2(3, 0), aluResultReg(3, 0), loadStoreOutReg(3, 0))
 }
 
 /**

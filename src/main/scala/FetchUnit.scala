@@ -23,7 +23,7 @@ class FetchUnit extends Module {
 
     io.addr1 := pc
     io.addr2 := pc + 1.U
-    io.pcOut := pc + 2.U
+    io.pcOut := pc + 1.U  // TODO 2.U
     io.i1 := io.val1
-    io.i2 := io.val2
+    io.i2 := 0.U // TODO io.val2
 }
