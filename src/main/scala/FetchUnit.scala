@@ -10,10 +10,8 @@ class FetchUnit extends Module {
     val io = IO(new Bundle {
         val pcIn = Input(UInt(32.W))
         val pcOut = Output(UInt(32.W))
-        val addr1 = Output(UInt(8.W))
-        val addr2 = Output(UInt(8.W))
-        val val1 = Input(UInt(32.W))
-        val val2 = Input(UInt(32.W))
+        val IMemPort1 = Flipped(new IMemIO())
+        val IMemPort2 = Flipped(new IMemIO())
         val i1 = Output(UInt(32.W))
         val i2 = Output(UInt(32.W))
     })
@@ -21,9 +19,9 @@ class FetchUnit extends Module {
 
     // TODO check pc validity
 
-    io.addr1 := pc
-    io.addr2 := pc + 1.U
+    io.IMemPort1.address := pc
+    io.IMemPort2.address := pc + 1.U
     io.pcOut := pc + 1.U  // TODO 2.U
-    io.i1 := io.val1
-    io.i2 := 0.U // TODO io.val2
+    io.i1 := io.IMemPort1.value
+    io.i2 := 0.U // TODO io.IMemPort2.value
 }
