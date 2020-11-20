@@ -42,9 +42,9 @@ class Alu extends Module {
     } .elsewhen(function === 10.U) { // AND: ANDI
         result := in1 & in2
     } .elsewhen(function === 11.U) { // Load upper immediate: LUI
-        result := in1 | (in2(19, 0) << 12)  // TODO in1 = rd
+        result := in1 | (in2(19, 0) << 12.U)(31,0)  // TODO in1 = rd
     } .elsewhen(function === 12.U) { // add upper immediate to pc: AUIPC
-        result := in1 + (in2(19, 0) << 12)  // TODO in1 = pc of AUIPC instruction
+        result := in1 + (in2(19, 0) << 12.U)(31,0)  // TODO in1 = pc of AUIPC instruction
     } .otherwise {  // NOP
         result := 0.U
     }

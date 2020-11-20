@@ -6,11 +6,11 @@ import chisel3.iotesters.PeekPokeTester
  *
  */
 class AluTester(dut: Alu) extends PeekPokeTester(dut) {
-    val a : Int = -100
-    val b : Int = 2
+    val a : Int = 985487
+    val b : Int = 4095
     println("a = " + a.toString + " = " + a.toHexString)
     println("b = " + b.toString + " = " + b.toHexString)
-    for (op <- 0 to 9) {
+    for (op <- 0 to 12) {
         val result =
             op match {
                 case 0 => 0
@@ -24,8 +24,10 @@ class AluTester(dut: Alu) extends PeekPokeTester(dut) {
                 case 8 => a | b
                 case 9 => a ^ b
                 case 10 => a & b
+                case 11 => a
+                case 12 => a + (b << 12)
             }
-        println(op.toString + ": " + result.toString + " = " +result.toHexString)
+        println(op.toString + ": " + result.toString + " = " + result.toHexString)
 
         poke(dut.io.function, op)
         poke(dut.io.in1, a)
