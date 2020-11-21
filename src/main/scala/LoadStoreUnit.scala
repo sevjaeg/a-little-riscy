@@ -33,31 +33,48 @@ class LoadStoreUnit extends Module {
     }
 
     when(function === 1.U){          // Load Byte
-        // TODO
+        // TODO chisel type of remainder does not support indexing
+        //val readByte = io.memory.dataOut((remainder + 1.U) * 8.U - 1.U, remainder * 8.U)
+        //val readByte = io.memory.dataOut((remainder + 1) * 8 - 1, remainder * 8)
+        //loadedValue := Cat(0.U(24.W),readByte)
         loadedValue := io.memory.dataOut
 
     } .elsewhen(function === 2.U) {  // Load Halfword
-        // TODO
+        // TODO chisel type of remainder does not support indexing
+        // TODO remainder % 2 === 0 ?
+        // Would work for remainder === 1, but nor for remainder === 3
+        //val readBytes = io.memory.dataOut((remainder + 2.U) * 8.U - 1.U, remainder * 8.U)
+        //loadedValue := Cat(0.U(16.W),readBytes)
         loadedValue := io.memory.dataOut
 
     } .elsewhen(function === 3.U) {  // Load Word
+        // TODO remainder zero?
         loadedValue := io.memory.dataOut
 
     } .elsewhen(function === 4.U) {  // Store Byte
-        // TODO
+        // TODO Check little vs big endian
         writeEnable := true.B
-        dataOut := io.storeValue
-        for (idx <- 0 to 3) {
-            writeMask(idx) := true.B
+        dataOut := io.storeValue << remainder * 8.U
+        when(remainder === 0.U) {
+            writeMask(3) := true.B
+        } .elsewhen(remainder === 1.U) {
+            writeMask(2) := true.B
+        } .elsewhen(remainder === 2.U) {
+            writeMask(1) := true.B
+        } .elsewhen(remainder === 3.U) {
+            writeMask(0) := true.B
         }
+
     } .elsewhen(function === 5.U) {  // Store Halfword
-        // TODO
+        // TODO remainder % 2 === 0 ?
         writeEnable := true.B
         dataOut := io.storeValue
         for (idx <- 0 to 3) {
             writeMask(idx) := true.B
         }
+
     } .elsewhen(function === 6.U) {  // Store Word
+        // TODO remainder zero?
         writeEnable := true.B
         dataOut := io.storeValue
         for (idx <- 0 to 3) {
