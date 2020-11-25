@@ -5,16 +5,27 @@
 import chisel3._
 import chisel3.util._
 
+class AluInIO() extends Bundle {
+    val function = Input(UInt(4.W))
+    val in1 = Input(UInt(32.W))
+    val in2 = Input(UInt(32.W))
+    val rd = Input(UInt(5.W))
+}
+
+class AluOutIO() extends Bundle {
+    val result = Output(UInt(32.W))
+    val rd = Output(UInt(5.W))
+}
+
 class Alu extends Module {
     val io = IO(new Bundle {
-        val function = Input(UInt(4.W))
-        val in1 = Input(UInt(32.W))
-        val in2 = Input(UInt(32.W))
-        val result = Output(UInt(32.W))
+        val in = new AluInIO()
+        val out = new AluOutIO()
     })
-    val function = io.function
-    val in1 = io.in1
-    val in2 = io.in2
+
+    val function = io.in.function
+    val in1 = io.in.in1
+    val in2 = io.in.in2
 
     val result = Wire(UInt(32.W))
 
@@ -50,5 +61,11 @@ class Alu extends Module {
         result := 0.U
     }
 
-    io.result := result
+    val resultRegister = RegInit(0.U(32.W))
+    resultRegister := result
+    io.out.result := resultRegister
+
+    val rdRegister =  RegInit(0.U(5.W))
+    rdRegister := io.in.rd
+    io.out.rd := rdRegister
 }
