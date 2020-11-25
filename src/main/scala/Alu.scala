@@ -18,6 +18,7 @@ class Alu extends Module {
 
     val result = Wire(UInt(32.W))
 
+    // TODO fix function encoding
     when(function === 1.U){  // logical shift left: SLLI
         result := (in1 << in2(4,0))(31,0)
     } .elsewhen(function === 2.U) {  // logical shift right: SRLI

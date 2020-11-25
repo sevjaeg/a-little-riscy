@@ -42,7 +42,7 @@ class LittleRiscy extends Module {
 
 
     // Instruction Queue
-    val instructionReg = RegInit(0.U(32.W))
+    val instructionReg = RegInit(0.U(32.W))  // TODO replace with queue
     instructionReg := instruction1
     // Debug output
     io.i1 := instructionReg

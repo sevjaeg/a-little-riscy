@@ -15,15 +15,6 @@ class LoadStoreTester(dut: MemSys) extends PeekPokeTester(dut) {
     var offset : Int = 0
     var storeValue : Int = 0
 
-   /* for (address <- 0 to 63) {
-        // Check empty memory
-        poke(dut.io.function, func_read)
-        poke(dut.io.addressBase, address)
-        poke(dut.io.addressOffset, 0)
-        step(1)
-        expect(dut.io.loadedValue, 0)
-    }*/
-
     // Store value to memory
     address = rand.nextInt(32)
     offset = rand.nextInt(32)
