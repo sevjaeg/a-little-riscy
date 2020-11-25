@@ -5,23 +5,33 @@
 import chisel3._
 import chisel3.util._
 
+class LoadStoreInIO() extends Bundle {
+    val function = Input(UInt(3.W))
+    val addressBase = Input(UInt(32.W))    // word address
+    val addressOffset = Input(UInt(12.W))  // word offset
+    val storeValue = Input(UInt(32.W))
+    val rd = Input(UInt(5.W))
+}
+
+class LoadStoreOutIO() extends Bundle {
+    val loadedValue = Output(UInt(32.W))
+    val rd = Output(UInt(5.W))
+}
+
 class LoadStoreUnit extends Module {
     val io = IO(new Bundle {
-        val function = Input(UInt(3.W))
-        val addressBase = Input(UInt(32.W))    // word address
-        val addressOffset = Input(UInt(12.W))  // word offset
-        val storeValue = Input(UInt(32.W))
-        val loadedValue = Output(UInt(32.W))
+        val in = new LoadStoreInIO()
+        val out = new LoadStoreOutIO()
         val memory = Flipped(new MemoryIO())
     })
 
-    val function = io.function
+    val function = io.in.function
     val loadedValue = Wire(UInt(32.W))
     val writeEnable = Wire(Bool())
     val dataOut = Wire(UInt(32.W))
     val writeMask = Wire(Vec(4, Bool()))
 
-    val byteAddress = io.addressBase + io.addressOffset
+    val byteAddress = io.in.addressBase + io.in.addressOffset
     val wordAddress = byteAddress / 4.U
     val remainder = byteAddress % 4.U
 
@@ -54,7 +64,7 @@ class LoadStoreUnit extends Module {
     } .elsewhen(function === 4.U) {  // Store Byte
         // TODO Check little vs big endian
         writeEnable := true.B
-        dataOut := io.storeValue << remainder * 8.U
+        dataOut := io.in.storeValue << remainder * 8.U
         when(remainder === 0.U) {
             writeMask(3) := true.B
         } .elsewhen(remainder === 1.U) {
@@ -68,7 +78,7 @@ class LoadStoreUnit extends Module {
     } .elsewhen(function === 5.U) {  // Store Halfword
         // TODO remainder % 2 === 0 ?
         writeEnable := true.B
-        dataOut := io.storeValue
+        dataOut := io.in.storeValue
         for (idx <- 0 to 3) {
             writeMask(idx) := true.B
         }
@@ -76,13 +86,19 @@ class LoadStoreUnit extends Module {
     } .elsewhen(function === 6.U) {  // Store Word
         // TODO remainder zero?
         writeEnable := true.B
-        dataOut := io.storeValue
+        dataOut := io.in.storeValue
         for (idx <- 0 to 3) {
             writeMask(idx) := true.B
         }
     }
 
-    io.loadedValue := loadedValue
+    val loadedValueRegister = RegInit(0.U(32.W))
+    loadedValueRegister := loadedValue
+    io.out.loadedValue := loadedValueRegister
+
+    val rdRegister =  RegInit(0.U(5.W))
+    rdRegister := io.in.rd
+    io.out.rd := rdRegister
 
     io.memory.address := wordAddress
     io.memory.write := writeEnable
@@ -110,11 +126,11 @@ class MemSys extends Module {
     val ls = Module(new LoadStoreUnit())
     val mem = Module(new Memory())
     ls.io.memory <> mem.io
-    ls.io.function := io.function
-    ls.io.addressBase := io.addressBase
-    ls.io.addressOffset := io.addressOffset
-    ls.io.storeValue := io.storeValue
-    io.loadedValue := ls.io.loadedValue
+    ls.io.in.function := io.function
+    ls.io.in.addressBase := io.addressBase
+    ls.io.in.addressOffset := io.addressOffset
+    ls.io.in.storeValue := io.storeValue
+    io.loadedValue := ls.io.out.loadedValue
 }
 
 /**
