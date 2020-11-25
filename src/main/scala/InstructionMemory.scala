@@ -5,18 +5,21 @@
 import chisel3._
 import chisel3.util._
 
-class IMemIO() extends Bundle {
+class IMemSingleIO() extends Bundle {
     val address = Input(UInt(6.W))
     val value = Output(UInt(32.W))
 }
 
+class IMemIO() extends Bundle {
+    val port1 = new IMemSingleIO()
+    val port2 = new IMemSingleIO()
+}
+
 class InstructionMemory extends Module {
-    val io = IO(new Bundle {
-        val port1 = new IMemIO
-        val port2 = new IMemIO
-    })
+    val io = IO(new IMemIO)
 
     val mem = Reg(Vec(64, UInt(32.W)))  // no reset
+
     mem(0) := "h0000000F".U
     mem(1) := "h00000005".U
     mem(2) := "h00000007".U
