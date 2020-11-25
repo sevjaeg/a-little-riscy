@@ -5,14 +5,19 @@
 import chisel3._
 import chisel3.util._
 
+class RegisterSingleReadIO() extends Bundle {
+    val address = Input(UInt(32.W))
+    val value = Output(UInt(5.W))
+}
+
+class RegisterReadIO() extends Bundle {
+    val r1 = new RegisterSingleReadIO()
+    val r2 = new RegisterSingleReadIO()
+}
 
 class RegisterPortIO() extends Bundle {
-    val rdValue = Input(UInt(32.W))
-    val rdAddress = Input(UInt(5.W))
-    val r1Address = Input(UInt(5.W))
-    val r2Address = Input(UInt(5.W))
-    val r1 = Output(UInt(32.W))
-    val r2 = Output(UInt(32.W))
+    val read = new RegisterReadIO()
+    val write = Flipped(new RegisterSingleReadIO())
 }
 
 // TODO deal with instructions using less registers (is it fine to just use address 0?)
@@ -21,6 +26,7 @@ class Registers extends Module {
     val io = IO(new Bundle {
         val portAlu = new RegisterPortIO()
         val portLoadStore = new RegisterPortIO()
+        val portDebug = new RegisterSingleReadIO()
         val pc = Output(UInt(32.W))
         val newPc = Input(UInt(32.W))
     })
@@ -34,18 +40,22 @@ class Registers extends Module {
 
     // TODO prevent write to the same location
     for(i <- 1 to 31) {
-        when(io.portAlu.rdAddress === i.U) {
-            registers(i) := io.portAlu.rdValue
-        } .elsewhen (io.portLoadStore.rdAddress === i.U) {
-            registers(i) := io.portLoadStore.rdValue
+        when(io.portAlu.write.address === i.U) {
+            registers(i) := io.portAlu.write.value
+        } .elsewhen (io.portLoadStore.write.address === i.U) {
+            registers(i) := io.portLoadStore.write.value
         } .otherwise {
             registers(i) := registers(i)
         }
     }
 
-    io.portAlu.r1 := registers(io.portAlu.r1Address)
-    io.portAlu.r2 := registers(io.portAlu.r2Address)
-    io.portLoadStore.r1 := registers(io.portLoadStore.r1Address)
-    io.portLoadStore.r2 := registers(io.portLoadStore.r2Address)
+    io.portAlu.read.r1.value := registers(io.portAlu.read.r1.address)
+    io.portAlu.read.r2.value := registers(io.portAlu.read.r2.address)
+
+    io.portLoadStore.read.r1.value := registers(io.portLoadStore.read.r1.address)
+    io.portLoadStore.read.r2.value := registers(io.portLoadStore.read.r2.address)
+
+    io.portDebug.value := registers(io.portDebug.address)
+
     io.pc := pc
 }

@@ -64,10 +64,10 @@ class LittleRiscy extends Module {
     loadStore.io.memory <> dataMemory.io
 
     // Write Back
-    registers.io.portAlu.rdAddress := alu.io.out.rd
-    registers.io.portAlu.rdValue := alu.io.out.result
-    registers.io.portLoadStore.rdAddress := loadStore.io.out.rd
-    registers.io.portLoadStore.rdValue := loadStore.io.out.loadedValue
+    registers.io.portAlu.write.address := alu.io.out.rd
+    registers.io.portAlu.write.value := alu.io.out.result
+    registers.io.portLoadStore.write.address := loadStore.io.out.rd
+    registers.io.portLoadStore.write.value := loadStore.io.out.loadedValue
 
     io.led := Cat(instruction1(3, 0), instruction2(3, 0))
 }
