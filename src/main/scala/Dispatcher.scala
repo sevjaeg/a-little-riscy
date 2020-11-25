@@ -9,8 +9,10 @@ import chisel3.util._
 class Dispatcher extends Module {
     val io = IO(new Bundle {
         val instruction = Input(UInt(32.W))
-        val aluIn = Flipped(new AluInIO())
-        val lsIn = Flipped(new LoadStoreInIO())
+        val aluOut = Flipped(new AluInIO())
+        val loadStoreOut = Flipped(new LoadStoreInIO())
+        val regPortAlu = Flipped(new RegisterPortIO())
+        val regPortLoadStore = Flipped(new RegisterPortIO())
     })
 
     val instruction = io.instruction
@@ -24,6 +26,18 @@ class Dispatcher extends Module {
     val r2 = instruction(24, 20)
     val firstBits = instruction(31, 25)
 
+    io.aluOut.function := 4.U
+    io.aluOut.in1 := 100.U
+    io.aluOut.in2 := 5.U
+    io.aluOut.rd := 3.U
+
+    io.loadStoreOut.rd := 0.U
+    io.loadStoreOut.addressBase := 0.U
+    io.loadStoreOut.addressOffset := 0.U
+    io.loadStoreOut.function := 0.U
+    io.loadStoreOut.storeValue := 0.U
+
+    /*
     when(opCode === "b11".U(7.W)) {
         // Load
     } .elsewhen(opCode === "b100011".U(7.W)) {
@@ -47,7 +61,8 @@ class Dispatcher extends Module {
     } .elsewhen(opCode === "b1111".U(7.W)) {
         // FENCE
     }
-
+    */
 
     // Assign outputs
+    // TODO registers if applicable (immediates, function, dest addr)
 }
