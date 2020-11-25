@@ -24,8 +24,7 @@ class LittleRiscy extends Module {
 
     // Fetch Unit
     val fetchUnit = Module(new FetchUnit())
-    instructionMemory.io.port1 <> fetchUnit.io.IMemPort1
-    instructionMemory.io.port2 <> fetchUnit.io.IMemPort2
+    fetchUnit.io.IMem <> instructionMemory.io
     fetchUnit.io.pcIn := pc
     registers.io.newPc := fetchUnit.io.pcOut
     val instruction1 = fetchUnit.io.i1
