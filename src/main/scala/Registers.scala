@@ -5,23 +5,6 @@
 import chisel3._
 import chisel3.util._
 
-class RegisterSingleReadIO() extends Bundle {
-    val address = Input(UInt(32.W))
-    val value = Output(UInt(5.W))
-}
-
-class RegisterReadIO() extends Bundle {
-    val r1 = new RegisterSingleReadIO()
-    val r2 = new RegisterSingleReadIO()
-}
-
-class RegisterPortIO() extends Bundle {
-    val read = new RegisterReadIO()
-    val write = Flipped(new RegisterSingleReadIO())
-}
-
-// TODO deal with instructions using less registers (is it fine to just use address 0?)
-
 class Registers extends Module {
     val io = IO(new Bundle {
         val portAlu = new RegisterPortIO()
@@ -38,7 +21,7 @@ class Registers extends Module {
     registers(0) := 0.U
     pc := io.newPc
 
-    // TODO prevent write to the same location
+    // TODO prevent write to the same location (here or at the dispatcher)
     for(i <- 1 to 31) {
         when(io.portAlu.write.address === i.U) {
             registers(i) := io.portAlu.write.value
@@ -58,4 +41,24 @@ class Registers extends Module {
     io.portDebug.value := registers(io.portDebug.address)
 
     io.pc := pc
+}
+
+class RegisterSingleReadIO() extends Bundle {
+    val address = Input(UInt(5.W))
+    val value = Output(UInt(32.W))
+}
+
+class RegisterSingleWriteIO() extends Bundle {
+    val address = Input(UInt(5.W))
+    val value = Input(UInt(32.W))
+}
+
+class RegisterReadIO() extends Bundle {
+    val r1 = new RegisterSingleReadIO()
+    val r2 = new RegisterSingleReadIO()
+}
+
+class RegisterPortIO() extends Bundle {
+    val read = new RegisterReadIO()
+    val write = new RegisterSingleWriteIO()
 }

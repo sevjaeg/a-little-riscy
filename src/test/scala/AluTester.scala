@@ -29,11 +29,11 @@ class AluTester(dut: Alu) extends PeekPokeTester(dut) {
             }
         println(op.toString + ": " + result.toString + " = " + result.toHexString)
 
-        poke(dut.io.function, op)
-        poke(dut.io.in1, a)
-        poke(dut.io.in2, b)
+        poke(dut.io.in.function, op)
+        poke(dut.io.in.in1, a)
+        poke(dut.io.in.in2, b)
         step(1)
-        expect(dut.io.result, result)
+        expect(dut.io.out.result, result)
     }
 }
 

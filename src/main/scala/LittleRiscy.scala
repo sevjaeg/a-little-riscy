@@ -9,13 +9,7 @@ class LittleRiscy extends Module {
     val io = IO(new Bundle {
         val sw = Input(UInt(16.W))
         val led = Output(UInt(16.W))
-        val i1 = Output(UInt(32.W))
-        val i2 = Output(UInt(32.W))
-        val aluIn1 = Input(UInt(32.W))
-        val aluIn2 = Input(UInt(32.W))
-        val aluFn = Input(UInt(4.W))
-        val aluRd = Input(UInt(32.W))
-        val aluRes = Output(UInt(32.W))
+        val debugPort = new RegisterSingleReadIO()
     })
 
     // Registers
@@ -41,16 +35,13 @@ class LittleRiscy extends Module {
     // Instruction Queue
     val instructionReg = RegInit(0.U(32.W))  // TODO replace with queue
     instructionReg := instruction1
-    // Debug output
-    io.i1 := instructionReg
-    io.i2 := instruction2
 
 
     // Dispatcher
     val dispatcher = Module(new Dispatcher)
     dispatcher.io.instruction := instructionReg
-    dispatcher.io.regPortAlu <> registers.io.portAlu
-    dispatcher.io.regPortLoadStore <> registers.io.portLoadStore
+    dispatcher.io.regPortAlu <> registers.io.portAlu.read
+    dispatcher.io.regPortLoadStore <> registers.io.portLoadStore.read
 
 
     // ALU
@@ -63,13 +54,19 @@ class LittleRiscy extends Module {
     loadStore.io.in <> dispatcher.io.loadStoreOut
     loadStore.io.memory <> dataMemory.io
 
+
     // Write Back
     registers.io.portAlu.write.address := alu.io.out.rd
     registers.io.portAlu.write.value := alu.io.out.result
     registers.io.portLoadStore.write.address := loadStore.io.out.rd
     registers.io.portLoadStore.write.value := loadStore.io.out.loadedValue
 
-    io.led := Cat(instruction1(3, 0), instruction2(3, 0))
+
+    // Debugging
+    registers.io.portDebug.address := io.debugPort.address
+    io.debugPort.value := registers.io.portDebug.value
+
+    io.led := Cat(instruction1(3, 0), instruction2(3, 0), io.debugPort.value(7, 0))
 }
 
 /**

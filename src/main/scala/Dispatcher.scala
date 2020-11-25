@@ -11,8 +11,8 @@ class Dispatcher extends Module {
         val instruction = Input(UInt(32.W))
         val aluOut = Flipped(new AluInIO())
         val loadStoreOut = Flipped(new LoadStoreInIO())
-        val regPortAlu = Flipped(new RegisterPortIO())
-        val regPortLoadStore = Flipped(new RegisterPortIO())
+        val regPortAlu = Flipped(new RegisterReadIO())
+        val regPortLoadStore = Flipped(new RegisterReadIO())
     })
 
     val instruction = io.instruction
@@ -26,11 +26,15 @@ class Dispatcher extends Module {
     val r2 = instruction(24, 20)
     val firstBits = instruction(31, 25)
 
+    io.regPortAlu.r1.address := 0.U
+    io.regPortAlu.r2.address := 0.U
     io.aluOut.function := 4.U
-    io.aluOut.in1 := 100.U
-    io.aluOut.in2 := 5.U
-    io.aluOut.rd := 3.U
+    io.aluOut.in1 := io.regPortAlu.r1.value
+    io.aluOut.in2 := 42.U
+    io.aluOut.rd := 1.U
 
+    io.regPortLoadStore.r1.address := 0.U
+    io.regPortLoadStore.r2.address := 0.U
     io.loadStoreOut.rd := 0.U
     io.loadStoreOut.addressBase := 0.U
     io.loadStoreOut.addressOffset := 0.U
