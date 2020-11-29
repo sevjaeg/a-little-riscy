@@ -5,16 +5,6 @@
 import chisel3._
 import chisel3.util._
 
-class IMemSingleIO() extends Bundle {
-    val address = Input(UInt(6.W))
-    val value = Output(UInt(32.W))
-}
-
-class IMemIO() extends Bundle {
-    val port1 = new IMemSingleIO()
-    val port2 = new IMemSingleIO()
-}
-
 class InstructionMemory extends Module {
     val io = IO(new IMemIO)
 
@@ -30,4 +20,14 @@ class InstructionMemory extends Module {
 
     io.port1.value := mem(io.port1.address)
     io.port2.value := mem(io.port2.address)
+}
+
+class IMemSingleIO() extends Bundle {
+    val address = Input(UInt(6.W))
+    val value = Output(UInt(32.W))
+}
+
+class IMemIO() extends Bundle {
+    val port1 = new IMemSingleIO()
+    val port2 = new IMemSingleIO()
 }

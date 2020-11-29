@@ -1,17 +1,11 @@
 /*
  *
+ *
+ * Only supports aligned access
  */
 
 import Chisel.Cat
 import chisel3._
-
-class MemoryIO() extends Bundle {
-    val dataIn = Input(UInt(32.W))
-    val dataOut = Output(UInt(32.W))
-    val address = Input(UInt(8.W))
-    val write = Input(Bool())
-    val writeMask = Input(Vec(4, Bool()))
-}
 
 class Memory extends Module {
     val io = IO(new MemoryIO())
@@ -33,4 +27,12 @@ class Memory extends Module {
 object MemoryMain extends App {
     println("I will now generate the Verilog file!")
     chisel3.Driver.execute(Array("--target-dir", "generated"), () => new Memory())
+}
+
+class MemoryIO() extends Bundle {
+    val dataIn = Input(UInt(32.W))
+    val dataOut = Output(UInt(32.W))
+    val address = Input(UInt(8.W))
+    val write = Input(Bool())
+    val writeMask = Input(Vec(4, Bool()))
 }

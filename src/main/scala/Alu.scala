@@ -30,34 +30,34 @@ class Alu extends Module {
     val result = Wire(UInt(32.W))
 
     // TODO fix function encoding
-    when(function === 1.U){  // logical shift left: SLLI
-        result := (in1 << in2(4,0))(31,0)
-    } .elsewhen(function === 2.U) {  // logical shift right: SRLI
-        result := in1 >> in2(4,0)
-    } .elsewhen(function === 3.U) { // aritmethic shift right: SRAI
-        val in1_signed = in1.asSInt
-        result := (in1_signed >> in2(4,0)).asUInt
-    } .elsewhen(function === 4.U) {  // addition: ADDI
+    when(function === "b1111".U) {  // addition: ADD(I)
         result := in1 + in2
-    } .elsewhen(function === 5.U) { // subtraction
+    } .elsewhen(function === "b0111".U) { // subtraction: SUB
         result := in1 - in2
-    } .elsewhen(function === 6.U) {  // set less than unsigned: SLTIU
-        result := in1 < in2
-    } .elsewhen(function === 7.U) {  // set less than signed: SLTI
+    } .elsewhen(function === "b1110".U){  // logical shift left: SLL(I)
+        result := (in1 << in2(4,0))(31,0)
+    } .elsewhen(function === "b1101".U) {  // set less than signed: SLT(I)
         val in1_signed = in1.asSInt
         val in2_signed = in2.asSInt
         result := in1_signed < in2_signed
-    }.elsewhen(function === 8.U) { // OR: ORI
-        result := in1 | in2
-    } .elsewhen(function === 9.U) {  // XOR: XORI
+    } .elsewhen(function === "b1100".U) {  // set less than unsigned: SLT(I)U
+        result := in1 < in2
+    } .elsewhen(function === "b1011".U) {  // XOR: XOR(I)
         result := in1 ^ in2
-    } .elsewhen(function === 10.U) { // AND: ANDI
+    } .elsewhen(function === "b1010".U) {  // logical shift right: SRL(I)
+        result := in1 >> in2(4,0)
+    } .elsewhen(function === "b0010".U) { // arithmetic shift right: SRA(I)
+        val in1_signed = in1.asSInt
+        result := (in1_signed >> in2(4,0)).asUInt
+    }  .elsewhen(function === "b1001".U) { // OR: ORI
+        result := in1 | in2
+    }  .elsewhen(function === "b1000".U) { // AND: ANDI
         result := in1 & in2
-    } .elsewhen(function === 11.U) { // Load upper immediate: LUI
+    } .elsewhen(function === "b0001".U) { // Load upper immediate: LUI
         result := in1 | (in2(19, 0) << 12.U)(31,0)  // TODO in1 = rd
-    } .elsewhen(function === 12.U) { // add upper immediate to pc: AUIPC
+    } .elsewhen(function === "b0100".U) { // add upper immediate to pc: AUIPC
         result := in1 + (in2(19, 0) << 12.U)(31,0)  // TODO in1 = pc of AUIPC instruction
-    } .otherwise {  // NOP
+    } .otherwise {  // NOP (including fn = 0000)
         result := 0.U
     }
 

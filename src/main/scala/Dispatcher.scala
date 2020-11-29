@@ -41,6 +41,9 @@ class Dispatcher extends Module {
     io.loadStoreOut.function := 0.U
     io.loadStoreOut.storeValue := 0.U
 
+    // Alu function encoding: Inv(Cat(alternate_bit, fn)), already implemented in ALU
+    // LUI: 0001, AUIPC: 0100
+
     /*
     when(opCode === "b11".U(7.W)) {
         // Load
