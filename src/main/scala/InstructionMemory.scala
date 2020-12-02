@@ -7,14 +7,16 @@ import chisel3.util._
 
 class InstructionMemory extends Module {
     val io = IO(new IMemIO)
+    val mem = Reg(Vec(128, UInt(32.W)))  // no reset
 
-    val mem = Reg(Vec(64, UInt(32.W)))  // no reset
-
-    mem(0) := 0.U
-    mem(1) := "h00578793".U   //add 5 to r15
-    mem(2) := "h00770713".U   //add 7 to r14
-    mem(4) := "hE787B3".U   // add r14 + r15 to r 15
-
+    val fileName = "test_sw/instructions.txt"
+    val bufferedSource = scala.io.Source.fromFile(fileName)
+    var i = 0
+    for (lines <- bufferedSource.getLines()) {
+        mem(i) := ("h".concat(lines)).U
+        i = i + 2  // TODO only every second instruction to avoid hazards
+    }
+    bufferedSource.close()
 
     io.port1.value := mem(io.port1.address)
     io.port2.value := mem(io.port2.address)

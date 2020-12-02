@@ -1,0 +1,2 @@
+riscv32-unknown-elf-gcc -g test.c -o test
+riscv32-unknown-elf-objdump -d test

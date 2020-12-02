@@ -7,8 +7,6 @@ import chisel3.util._
 
 class LoadStoreUnit extends Module {
     val io = IO(new LoadStoreIO())
-
-    val function = io.in.function
     val loadedValue = Wire(UInt(32.W))
     val writeEnable = Wire(Bool())
     val dataOut = Wire(UInt(32.W))
@@ -25,53 +23,79 @@ class LoadStoreUnit extends Module {
         writeMask(idx) := false.B
     }
 
-    when(function === 1.U) {          // Load Byte
-        val readByte = Wire(UInt(8.W))
-        readByte := 0.U
-        for (rem <- 0 to 3) {
-            when(remainder === rem.U) {
-                readByte := (io.memory.dataOut >> (rem * 8).U).asUInt()(7,0)
+    switch(io.in.function) {
+        is("b1000".U) { // Load Byte
+            val readByte = Wire(UInt(8.W))
+            readByte := 0.U
+            for (rem <- 0 to 3) {
+                when(remainder === rem.U) {
+                    readByte := (io.memory.dataOut >> (rem * 8).U).asUInt()(7, 0)
+                }
+            }
+            val byteExtended = Wire(SInt(32.W))
+            byteExtended := readByte.asSInt()
+            loadedValue := byteExtended.asUInt()
+        }
+        is("b1001".U) { // Load Halfword
+            val readBytes = Wire(UInt(16.W))
+            readBytes := 0.U
+            for (rem_half <- 0 to 1) {
+                when(remainder === (rem_half * 2).U) {
+                    readBytes := (io.memory.dataOut >> (rem_half * 16).U).asUInt()(15, 0)
+                }
+            }
+            val bytesExtended = Wire(SInt(32.W))
+            bytesExtended := readBytes.asSInt()
+            loadedValue := bytesExtended.asUInt()
+        }
+        is("b1010".U) { // Load Word
+            loadedValue := io.memory.dataOut
+        }
+        is("b1100".U) { // Load Byte Unsigned  //TODO fix
+            val readByte = Wire(UInt(8.W))
+            readByte := 0.U
+            for (rem <- 0 to 3) {
+                when(remainder === rem.U) {
+                    readByte := (io.memory.dataOut >> (rem * 8).U).asUInt()(7, 0)
+                }
+            }
+            loadedValue := Cat(0.U(24.W), readByte)
+        }
+        is("b1101".U) { // Load Halfword Unsigned  //TODO fix
+            val readBytes = Wire(UInt(16.W))
+            readBytes := 0.U
+            for (rem_half <- 0 to 1) {
+                when(remainder === (rem_half * 2).U) {
+                    readBytes := (io.memory.dataOut >> (rem_half * 16).U).asUInt()(15, 0)
+                }
+            }
+            loadedValue := Cat(0.U(16.W), readBytes)
+        }
+        is("b0111".U) { // Store Byte
+            writeEnable := true.B
+            for (rem <- 0 to 3) {
+                when(remainder === rem.U) {
+                    dataOut := (io.in.storeValue << (rem * 8).U).asUInt()
+                    writeMask(rem) := true.B
+                }
             }
         }
-        loadedValue := Cat(0.U(24.W),readByte)
-
-    } .elsewhen(function === 2.U) {  // Load Halfword
-        val readBytes = Wire(UInt(16.W))
-        readBytes := 0.U
-        for (rem_half <- 0 to 1) {
-            when(remainder === (rem_half*2).U) {
-                readBytes := (io.memory.dataOut >> (rem_half * 16).U).asUInt()(15,0)
+        is("b0110".U) { // Store Halfword
+            writeEnable := true.B
+            for (rem_half <- 0 to 1) {
+                when(remainder === (rem_half * 2).U) {
+                    dataOut := (io.in.storeValue << (rem_half * 16).U).asUInt()(31, 0)
+                    writeMask(rem_half * 2) := true.B
+                    writeMask(rem_half * 2 + 1) := true.B
+                }
             }
         }
-        loadedValue := Cat(0.U(16.W),readBytes)
-
-    } .elsewhen(function === 3.U) {  // Load Word
-        loadedValue := io.memory.dataOut
-
-    } .elsewhen(function === 4.U) {  // Store Byte
-        writeEnable := true.B
-        for (rem <- 0 to 3) {
-            when(remainder === rem.U) {
-                dataOut := (io.in.storeValue << (rem * 8).U).asUInt()
-                writeMask(rem) := true.B
+        is("b0101".U) { // Store Word
+            writeEnable := true.B
+            dataOut := io.in.storeValue
+            for (idx <- 0 to 3) {
+                writeMask(idx) := true.B
             }
-        }
-
-    } .elsewhen(function === 5.U) {  // Store Halfword
-        writeEnable := true.B
-        for (rem_half <- 0 to 1) {
-            when(remainder === (rem_half*2).U) {
-                dataOut := (io.in.storeValue << (rem_half * 16).U).asUInt()(31,0)
-                writeMask(rem_half*2) := true.B
-                writeMask(rem_half*2+1) := true.B
-            }
-        }
-
-    } .elsewhen(function === 6.U) {  // Store Word
-        writeEnable := true.B
-        dataOut := io.in.storeValue
-        for (idx <- 0 to 3) {
-            writeMask(idx) := true.B
         }
     }
 
@@ -90,7 +114,7 @@ class LoadStoreUnit extends Module {
 }
 
 class LoadStoreInIO() extends Bundle {
-    val function = Input(UInt(3.W))
+    val function = Input(UInt(4.W))
     val addressBase = Input(UInt(32.W))    // word address
     val addressOffset = Input(UInt(12.W))  // word offset
     val storeValue = Input(UInt(32.W))
@@ -117,7 +141,6 @@ class MemSys extends Module {
         val in = new LoadStoreInIO()
         val out = new LoadStoreOutIO()
     })
-
 
     val ls = Module(new LoadStoreUnit())
     val mem = Module(new Memory())

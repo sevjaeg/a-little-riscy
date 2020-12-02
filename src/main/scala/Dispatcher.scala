@@ -20,8 +20,8 @@ class Dispatcher extends Module {
     // This should handle all instructions
     // TODO consider renaming
     val bits_opCode = instruction(6, 0)
-    val bits_function = instruction(14, 12)
     val bits_rd = instruction(11, 7)
+    val bits_function = instruction(14, 12)
     val bits_r1 = instruction(19, 15)
     val bits_r2 = instruction(24, 20)
     val bits_ms = instruction(31, 25)
@@ -34,7 +34,7 @@ class Dispatcher extends Module {
     val aluR1Address = Wire(UInt(5.W))
     val aluR2Address = Wire(UInt(5.W))
     val aluHasImmediate = Wire(UInt(1.W))
-    val aluImmediate = Wire(UInt(12.W))
+    val aluImmediate = Wire(UInt(20.W))
     aluFunction := 0.U
     aluIn1 := 0.U
     aluIn2 := 0.U
@@ -45,7 +45,7 @@ class Dispatcher extends Module {
     aluImmediate := 0.U
 
     // Intermediate Signals (LoadStore)
-    val lsFunction = Wire(UInt(3.W))
+    val lsFunction = Wire(UInt(4.W))
     val lsRdAddress = Wire(UInt(5.W))
     val lsR1Address = Wire(UInt(5.W))
     val lsR2Address = Wire(UInt(5.W))
@@ -60,65 +60,76 @@ class Dispatcher extends Module {
     lsOffset := 0.U
     lsStoreValue := 0.U
 
-    // Alu function encoding: Inv(Cat(alternate_bit, fn)), already implemented in ALU
-    // LUI: 0001, AUIPC: 0100
-
-    when(bits_opCode === "b11".U(7.W)) { // Load
-        // TODO ls encoding
-        lsRdAddress := bits_rd
-        lsR1Address := bits_r1
-        lsOffset := Cat(bits_ms, bits_r2) // TODO LBU, LHU
-    } .elsewhen(bits_opCode === "b100011".U(7.W)) { // Store
-        // TODO ls encoding
-        lsR1Address := bits_r1
-        lsR2Address := bits_r2
-        lsOffset := Cat(bits_ms, bits_rd)
-    } .elsewhen(bits_opCode(4,0) === "b10011".U(7.W)) {  // ALU
-        val alternateFunctionBit = Wire(UInt(1.W))
-            when(bits_opCode(5) === true.B) { // ALU Register
-                alternateFunctionBit := bits_ms(5)
-            } .otherwise { // ALU Immediate
-                aluHasImmediate := true.B
-                aluImmediate := Cat(bits_ms, bits_r2)
-                alternateFunctionBit := false.B
-                when(bits_function === "b101".U) {
-                    alternateFunctionBit := bits_ms(5)
-                    aluImmediate := bits_r2
-                }
-
-            }
-        aluFunction := ~ Cat(alternateFunctionBit, bits_function)
-        aluR1Address := bits_r1
-        switch(aluHasImmediate) {
-            is(false.B) {aluR2Address := bits_r2}
-            is(true.B) {aluR2Address := 0.U}
+    switch(bits_opCode) {
+        is("b0000011".U) { // Load
+            lsFunction := Cat(true.B, bits_function)
+            lsRdAddress := bits_rd
+            lsR1Address := bits_r1
+            lsOffset := Cat(bits_ms, bits_r2)
         }
-        aluRdAddress := bits_rd
-    } .elsewhen(bits_opCode === "b0110111".U(7.W)) {
-        // LUI
-        aluFunction := "b0001".U
-    } .elsewhen(bits_opCode === "b0010111".U(7.W)) {
-        // AUIPC
-        aluFunction := "b0100".U
-    } .elsewhen(bits_opCode === "b1101111".U(7.W)) {
-        // JAL
-    } .elsewhen(bits_opCode === "b1100111".U(7.W)) {
-        // JALR
-    } .elsewhen(bits_opCode === "b1100011".U(7.W)) {
-        // BRANCH
-    } .elsewhen(bits_opCode === "b1110011".U(7.W)) {
-        // ENV
-    } .elsewhen(bits_opCode === "b1111".U(7.W)) {
-        // FENCE
+        is("b0100011".U) { // Store
+            lsFunction := ~Cat(true.B, bits_function)
+            lsR1Address := bits_r1
+            lsR2Address := bits_r2
+            lsOffset := Cat(bits_ms, bits_rd)
+        }
+        is("b0110011".U) { // ALU
+            aluFunction := ~Cat(bits_ms(5), bits_function)
+            aluR1Address := bits_r1
+            aluR2Address := bits_r2
+            aluRdAddress := bits_rd
+        }
+        is("b0010011".U) { // ALU Immediate
+            val alternateFunctionBit = Wire(UInt(1.W))
+            aluHasImmediate := true.B
+            aluImmediate := Cat(bits_ms, bits_r2)
+            alternateFunctionBit := false.B
+            when(bits_function === "b101".U) {  // Right Shift (logical or arithmetic)
+                alternateFunctionBit := bits_ms(5)
+                aluImmediate := bits_r2
+            }
+            aluFunction := ~Cat(alternateFunctionBit, bits_function)
+            aluR1Address := bits_r1
+            aluR2Address := 0.U
+            aluRdAddress := bits_rd
+        }
+        is("b0110111".U) { // LUI
+            aluFunction := "b0001".U
+            aluRdAddress := bits_rd
+            aluHasImmediate := true.B
+            aluHasImmediate := Cat(bits_ms, bits_r2, bits_r1, bits_function)
+        }
+        is("b0010111".U) { // AUIPC
+            // TODO in1 = pc of AUIPC instruction
+            aluFunction := "b0100".U
+            aluRdAddress := bits_rd
+            aluHasImmediate := true.B
+            aluImmediate := Cat(bits_ms, bits_r2, bits_r1, bits_function)
+        }
+        is("b1101111".U) {
+            // JAL
+        }
+        is("b1100111".U) {
+            // JALR
+        }
+        is("b1100011".U) {
+            // BRANCH
+        }
+        is("b1110011".U) {
+            // ENV
+        }
+        is("b0001111".U) {
+            // FENCE
+            // NOP
+        }
     }
-
     val aluFunctionRegister = RegInit(0.U(4.W))
     val aluIn2Register = RegInit(0.U(32.W))
     val aluR1AddressRegister = RegInit(0.U(5.W))
     val aluR2AddressRegister = RegInit(0.U(5.W))
     val aluRdAddressRegister = RegInit(0.U(5.W))
     val aluHasImmediateRegister = RegInit(0.U(13.W))
-    val aluImmediateRegister = RegInit(0.U(13.W))
+    val aluImmediateRegister = RegInit(0.U(20.W))
 
     aluFunctionRegister := aluFunction
     aluRdAddressRegister := aluRdAddress
@@ -138,19 +149,23 @@ class Dispatcher extends Module {
 
     io.aluOut.rd := aluRdAddressRegister
 
-    val lsFunctionRegister = RegInit(0.U(3.W))
+    val lsFunctionRegister = RegInit(0.U(4.W))
+    val lsR1AddressRegister = RegInit(0.U(5.W))
+    val lsR2AddressRegister = RegInit(0.U(5.W))
     val lsRdAddressRegister = RegInit(0.U(5.W))
     val lsOffsetRegister = RegInit(0.U(12.W))
 
     lsFunctionRegister := lsFunction
+    lsR1AddressRegister := lsR1Address
+    lsR2AddressRegister := lsR2Address
     lsRdAddressRegister := lsRdAddress
     lsOffsetRegister := lsOffset
 
-    io.regPortLoadStore.r1.address := lsR1Address
-    io.regPortLoadStore.r2.address := lsR2Address
+    io.regPortLoadStore.r1.address := lsR1AddressRegister
+    io.regPortLoadStore.r2.address := lsR2AddressRegister
     io.loadStoreOut.rd := lsRdAddressRegister
-    io.loadStoreOut.addressBase := io.regPortAlu.r1.value
+    io.loadStoreOut.addressBase := io.regPortLoadStore.r1.value
     io.loadStoreOut.addressOffset := lsOffsetRegister
     io.loadStoreOut.function := lsFunctionRegister
-    io.loadStoreOut.storeValue := io.regPortAlu.r2.value
+    io.loadStoreOut.storeValue := io.regPortLoadStore.r2.value
 }

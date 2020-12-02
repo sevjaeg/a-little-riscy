@@ -10,7 +10,7 @@ class AluInIO() extends Bundle {
     val in1 = Input(UInt(32.W))
     val in2 = Input(UInt(32.W))
     val hasImmediate = Input(UInt(1.W))
-    val inImmediate = Input(UInt(12.W))
+    val inImmediate = Input(UInt(20.W))
     val rd = Input(UInt(5.W))
 }
 
@@ -61,9 +61,9 @@ class Alu extends Module {
     }  .elsewhen(function === "b1000".U) { // AND: ANDI
         result := in1 & in2
     } .elsewhen(function === "b0001".U) { // Load upper immediate: LUI
-        result := in1 | (in2(19, 0) << 12.U)(31,0)  // TODO in1 = rd
+        result := (in2(19, 0) << 12.U)(31,0)
     } .elsewhen(function === "b0100".U) { // add upper immediate to pc: AUIPC
-        result := in1 + (in2(19, 0) << 12.U)(31,0)  // TODO in1 = pc of AUIPC instruction
+        result := in1 + (in2(19, 0) << 12.U)(31,0)
     } .otherwise {  // NOP (including fn = 0000)
         result := 0.U
     }
