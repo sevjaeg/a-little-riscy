@@ -9,6 +9,8 @@ class AluInIO() extends Bundle {
     val function = Input(UInt(4.W))
     val in1 = Input(UInt(32.W))
     val in2 = Input(UInt(32.W))
+    val hasImmediate = Input(UInt(1.W))
+    val inImmediate = Input(UInt(12.W))
     val rd = Input(UInt(5.W))
 }
 
@@ -25,11 +27,16 @@ class Alu extends Module {
 
     val function = io.in.function
     val in1 = io.in.in1
-    val in2 = io.in.in2
+    val in2 = Wire(UInt(32.W))
+    in2 := 0.U
 
+    // Multiplexer: register or immediate
+    switch(io.in.hasImmediate) {
+        is(true.B) {in2 := io.in.inImmediate}
+        is(false.B) {in2 := io.in.in2}
+    }
     val result = Wire(UInt(32.W))
 
-    // TODO fix function encoding
     when(function === "b1111".U) {  // addition: ADD(I)
         result := in1 + in2
     } .elsewhen(function === "b0111".U) { // subtraction: SUB

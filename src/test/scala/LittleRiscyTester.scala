@@ -6,11 +6,12 @@ import chisel3.iotesters.PeekPokeTester
  *
  */
 class LittleRiscyTester(dut: LittleRiscy) extends PeekPokeTester(dut) {
-    for(i <- 0 to 7) {  // clock cycles
-        poke(dut.io.debugPort.address, i)
+    var addr: Int = 15
+    for(i <- 0 to 12) {  // clock cycles
+        poke(dut.io.debugPort.address, addr)
         step(1)
         val v = peek(dut.io.debugPort.value)
-        println("reg value @" + i +  ": " + v.toString)
+        println("reg value @" + addr +  ": " + v.toString)
 
     }
 }
