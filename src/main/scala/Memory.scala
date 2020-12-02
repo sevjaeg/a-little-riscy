@@ -9,17 +9,23 @@ import chisel3._
 
 class Memory extends Module {
     val io = IO(new MemoryIO())
-    val mem = Mem(64, Vec(4, UInt(8.W)))
+    val mem = new Array[Mem[UInt]](4)
+    for (idx <- 0 to 3) {
+        mem(idx) = Mem(64, UInt(8.W))
+    }
 
     when(io.write) {
-        val data = Wire(Vec(4, UInt(8.W)))
         for (idx <- 0 to 3) {
-            data(idx) := io.dataIn((idx+1) * 8 - 1, idx * 8)
+            when(io.writeMask(idx)) {
+                mem(idx).write(io.address, io.dataIn((idx + 1) * 8 - 1, idx * 8))
+            }
         }
-        mem.write(io.address, data, io.writeMask)
         io.dataOut := 0.U
     } .otherwise {
-        val data = mem.read(io.address)
+        val data = new Array[UInt](4)
+        for (idx <- 0 to 3) {
+            data(idx) = mem(idx).read(io.address)
+        }
         io.dataOut := Cat(data(3), data(2), data(1), data(0))
     }
 }
