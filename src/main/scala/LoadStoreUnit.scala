@@ -14,7 +14,7 @@ class LoadStoreUnit extends Module {
 
     val byteAddress = io.in.addressBase + io.in.addressOffset
     val wordAddress = (byteAddress >> 2.U).asUInt()
-    val remainder = byteAddress - (wordAddress << 2.U)
+    val remainder = byteAddress(1,0)
 
     writeEnable := false.B
     dataOut := 0.U
@@ -24,25 +24,25 @@ class LoadStoreUnit extends Module {
     }
 
     switch(io.in.function) {
-        is("b1000".U) { // Load Byte
-            val readByte = Wire(UInt(8.W))
+        is("b1000".U) { // Load Byte Signed
+            val readByte = Wire(Bits(8.W))
             readByte := 0.U
             for (rem <- 0 to 3) {
                 when(remainder === rem.U) {
-                    readByte := (io.memory.dataOut >> (rem * 8).U).asUInt()(7, 0)
+                    readByte := (io.memory.dataOut >> (rem * 8).U)(7, 0)
                 }
             }
             val byteExtended = Wire(SInt(32.W))
             byteExtended := readByte.asSInt()
             loadedValue := byteExtended.asUInt()
         }
-        is("b1001".U) { // Load Halfword
-            val readBytes = Wire(UInt(16.W))
+        is("b1001".U) { // Load Halfword Signed
+            val readBytes = Wire(Bits(16.W))
             readBytes := 0.U
-            for (rem_half <- 0 to 1) {
-                when(remainder === (rem_half * 2).U) {
-                    readBytes := (io.memory.dataOut >> (rem_half * 16).U).asUInt()(15, 0)
-                }
+            when(remainder === 0.U) {
+                readBytes := io.memory.dataOut(15, 0)
+            } .elsewhen(remainder === 2.U) {
+                readBytes := (io.memory.dataOut >> 16.U)(15, 0)
             }
             val bytesExtended = Wire(SInt(32.W))
             bytesExtended := readBytes.asSInt()
@@ -51,43 +51,45 @@ class LoadStoreUnit extends Module {
         is("b1010".U) { // Load Word
             loadedValue := io.memory.dataOut
         }
-        is("b1100".U) { // Load Byte Unsigned  //TODO fix
-            val readByte = Wire(UInt(8.W))
+        is("b1100".U) { // Load Byte Unsigned
+            val readByte = Wire(Bits(8.W))
             readByte := 0.U
             for (rem <- 0 to 3) {
                 when(remainder === rem.U) {
-                    readByte := (io.memory.dataOut >> (rem * 8).U).asUInt()(7, 0)
+                    readByte := (io.memory.dataOut >> (rem * 8).U)(7, 0)
                 }
             }
             loadedValue := Cat(0.U(24.W), readByte)
         }
-        is("b1101".U) { // Load Halfword Unsigned  //TODO fix
-            val readBytes = Wire(UInt(16.W))
+        is("b1101".U) { // Load Halfword Unsigned
+            val readBytes = Wire(Bits(16.W))
             readBytes := 0.U
-            for (rem_half <- 0 to 1) {
-                when(remainder === (rem_half * 2).U) {
-                    readBytes := (io.memory.dataOut >> (rem_half * 16).U).asUInt()(15, 0)
-                }
+            when(remainder === 0.U) {
+                readBytes := io.memory.dataOut(15, 0)
+            } .elsewhen(remainder === 2.U) {
+                readBytes := (io.memory.dataOut >> 16.U)(15, 0)
             }
-            loadedValue := Cat(0.U(16.W), readBytes)
+            loadedValue := Cat(0.U(16.W), readBytes).asUInt()
         }
         is("b0111".U) { // Store Byte
             writeEnable := true.B
             for (rem <- 0 to 3) {
                 when(remainder === rem.U) {
-                    dataOut := (io.in.storeValue << (rem * 8).U).asUInt()
+                    dataOut := (io.in.storeValue << (rem * 8).U)(31,0).asUInt()
                     writeMask(rem) := true.B
                 }
             }
         }
         is("b0110".U) { // Store Halfword
             writeEnable := true.B
-            for (rem_half <- 0 to 1) {
-                when(remainder === (rem_half * 2).U) {
-                    dataOut := (io.in.storeValue << (rem_half * 16).U).asUInt()(31, 0)
-                    writeMask(rem_half * 2) := true.B
-                    writeMask(rem_half * 2 + 1) := true.B
-                }
+            when(remainder === 0.U) {
+                dataOut := io.in.storeValue
+                writeMask(0) := true.B
+                writeMask(1) := true.B
+            } .elsewhen(remainder === 2.U) {
+                dataOut := (io.in.storeValue << 16.U)(31,0).asUInt()
+                writeMask(2) := true.B
+                writeMask(3) := true.B
             }
         }
         is("b0101".U) { // Store Word
