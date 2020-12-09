@@ -71,6 +71,7 @@ class InstructionQueue(depth: Int) extends Module {
         oneFreeReg := false.B
         emptyReg := secondNextRead === writePtr
         oneLeftReg := thirdNextRead === writePtr
+        incrOneRead := false.B
         incrTwoRead := true.B
     }
 
@@ -80,6 +81,7 @@ class InstructionQueue(depth: Int) extends Module {
         emptyReg := nextRead === writePtr
         oneLeftReg := secondNextRead === writePtr
         incrOneRead := true.B
+        incrTwoRead := false.B
     }
 
     io.deq.bits1 := memReg(readPtr)
