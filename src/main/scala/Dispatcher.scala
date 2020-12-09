@@ -8,14 +8,15 @@ import chisel3.util._
 
 class Dispatcher extends Module {
     val io = IO(new Bundle {
-        val instruction = Input(UInt(32.W))
+        val instruction = Input(UInt(64.W))
         val aluOut = Flipped(new AluInIO())
         val loadStoreOut = Flipped(new LoadStoreInIO())
         val regPortAlu = Flipped(new RegisterReadIO())
         val regPortLoadStore = Flipped(new RegisterReadIO())
     })
 
-    val instruction = io.instruction
+    val pc = io.instruction(63,32)
+    val instruction = io.instruction(31,0)
 
     // This should handle all instructions
     // TODO consider renaming

@@ -14,7 +14,7 @@ class InstructionMemory extends Module {
     var i = 0
     for (lines <- bufferedSource.getLines()) {
         mem(i) := ("h".concat(lines)).U
-        i = i + 2  // TODO only every second instruction to avoid hazards
+        i = i + 1
     }
     bufferedSource.close()
 
