@@ -9,7 +9,6 @@ class LittleRiscy extends Module {
     val io = IO(new Bundle {
         val sw = Input(UInt(16.W))
         val led = Output(UInt(16.W))
-        val debugPort = new RegisterSingleReadIO()
     })
 
     // Registers
@@ -27,28 +26,18 @@ class LittleRiscy extends Module {
     fetchUnit.io.IMem <> instructionMemory.io
     fetchUnit.io.pcIn := pc
     registers.io.newPc := fetchUnit.io.pcOut
-    val instruction2 = fetchUnit.io.i2
-
 
     // Instruction Queue
-    val instructionQueue = Module(new RegFifo(UInt(64.W), 4))
-    instructionQueue.io.enq.bits := fetchUnit.io.i1
-
-    val instructionReady = instructionQueue.io.enq.ready // TODO maybe more relevant conditions?
-    instructionQueue.io.enq.valid := instructionReady
+    val instructionQueue = Module(new RegFifo(UInt(128.W), 6))
+    fetchUnit.io.queue <> instructionQueue.io.enq
 
 
     // Dispatcher
     val dispatcher = Module(new Dispatcher)
 
-    // TODO
-    instructionQueue.io.deq.ready := true.B
-    val readReady = instructionQueue.io.deq.valid
-    when(readReady) {
-        dispatcher.io.instruction := instructionQueue.io.deq.bits
-    } .otherwise {
-        dispatcher.io.instruction := 0.U  // TODO
-    }
+    instructionQueue.io.deq.ready := dispatcher.io.ready
+    dispatcher.io.instructions := instructionQueue.io.deq.bits
+    dispatcher.io.instructionsValid := instructionQueue.io.deq.valid
 
     dispatcher.io.regPortAlu <> registers.io.portAlu.read
     dispatcher.io.regPortLoadStore <> registers.io.portLoadStore.read
@@ -72,11 +61,8 @@ class LittleRiscy extends Module {
     registers.io.portLoadStore.write.value := loadStore.io.out.loadedValue
 
 
-    // Debugging
-    registers.io.portDebug.address := io.debugPort.address
-    io.debugPort.value := registers.io.portDebug.value
-
-    io.led := Cat(io.debugPort.value(15, 0))
+    //
+    io.led := 0.U
 }
 
 /**

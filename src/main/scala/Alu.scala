@@ -11,6 +11,8 @@ class AluInIO() extends Bundle {
     val in2 = Input(UInt(32.W))
     val hasImmediate = Input(UInt(1.W))
     val inImmediate = Input(UInt(20.W))
+    val isAUIPC = Input(UInt(1.W))
+    val inPc = Input(UInt(32.W))
     val rd = Input(UInt(5.W))
 }
 
@@ -26,14 +28,20 @@ class Alu extends Module {
     })
 
     val function = io.in.function
-    val in1 = io.in.in1
+    val in1 = Wire(UInt(32.W))
     val in2 = Wire(UInt(32.W))
+    in1 := 0.U
     in2 := 0.U
 
     // Multiplexer: register or immediate
     switch(io.in.hasImmediate) {
         is(true.B) {in2 := io.in.inImmediate}
         is(false.B) {in2 := io.in.in2}
+    }
+    // Multiplexer: register or pc
+    switch(io.in.isAUIPC) {
+        is(true.B) {in1 := io.in.inPc}
+        is(false.B) {in1 := io.in.in1}
     }
     val result = Wire(UInt(32.W))
 

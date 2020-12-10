@@ -1,8 +1,6 @@
 int main() {
     int a = 5;
-    short b = 7;
-    int c = a + b;
-    b += 11;
-    char d = c;
-    return b == d;
+    a = a + 1;
+	a = 2;
+	return a;
 }

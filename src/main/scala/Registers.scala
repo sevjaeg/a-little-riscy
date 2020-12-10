@@ -9,7 +9,6 @@ class Registers extends Module {
     val io = IO(new Bundle {
         val portAlu = new RegisterPortIO()
         val portLoadStore = new RegisterPortIO()
-        val portDebug = new RegisterSingleReadIO()
         val pc = Output(UInt(32.W))
         val newPc = Input(UInt(32.W))
     })
@@ -20,8 +19,7 @@ class Registers extends Module {
     // New values
     registers(0) := 0.U
     pc := io.newPc
-
-    // TODO prevent write to the same location (here or at the dispatcher)
+    
     for(i <- 1 to 31) {
         when(io.portAlu.write.address === i.U) {
             registers(i) := io.portAlu.write.value
@@ -37,8 +35,6 @@ class Registers extends Module {
 
     io.portLoadStore.read.r1.value := registers(io.portLoadStore.read.r1.address)
     io.portLoadStore.read.r2.value := registers(io.portLoadStore.read.r2.address)
-
-    io.portDebug.value := registers(io.portDebug.address)
 
     io.pc := pc
 }
