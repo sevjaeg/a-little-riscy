@@ -55,10 +55,10 @@ class LittleRiscy extends Module {
 
 
     // Write Back
-    registers.io.portAlu.write.address := alu.io.out.rd
-    registers.io.portAlu.write.value := alu.io.out.result
-    registers.io.portLoadStore.write.address := loadStore.io.out.rd
-    registers.io.portLoadStore.write.value := loadStore.io.out.loadedValue
+    registers.io.portAlu.write.rd := alu.io.CDBout.rd
+    registers.io.portAlu.write.value := alu.io.CDBout.value
+    registers.io.portLoadStore.write.rd := loadStore.io.CDBout.rd
+    registers.io.portLoadStore.write.value := loadStore.io.CDBout.value
 
 
     //

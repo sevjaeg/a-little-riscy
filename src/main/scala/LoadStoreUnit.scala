@@ -103,11 +103,11 @@ class LoadStoreUnit extends Module {
 
     val loadedValueRegister = RegInit(0.U(32.W))
     loadedValueRegister := loadedValue
-    io.out.loadedValue := loadedValueRegister
+    io.CDBout.value := loadedValueRegister
 
     val rdRegister =  RegInit(0.U(5.W))
     rdRegister := io.in.rd
-    io.out.rd := rdRegister
+    io.CDBout.rd := rdRegister
 
     io.memory.address := wordAddress
     io.memory.write := writeEnable
@@ -130,7 +130,7 @@ class LoadStoreOutIO() extends Bundle {
 
 class LoadStoreIO() extends Bundle {
     val in = new LoadStoreInIO()
-    val out = new LoadStoreOutIO()
+    val CDBout = Flipped(new CDBInIO())
     val memory = Flipped(new MemoryIO())
 }
 
@@ -148,7 +148,7 @@ class MemSys extends Module {
     val mem = Module(new Memory())
     ls.io.memory <> mem.io
     ls.io.in <> io.in
-    ls.io.out <> io.out
+    ls.io.CDBout <> io.out
 }
 
 /**

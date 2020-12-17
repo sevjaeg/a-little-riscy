@@ -13,8 +13,8 @@ class Dispatcher extends Module {
         val ready = Output(Bool())
         val aluOut = Flipped(new AluInIO())
         val loadStoreOut = Flipped(new LoadStoreInIO())
-        val regPortAlu = Flipped(new RegisterReadIO())
-        val regPortLoadStore = Flipped(new RegisterReadIO())
+        val regPortAlu = Flipped(new RegisterDualReadIO())
+        val regPortLoadStore = Flipped(new RegisterDualReadIO())
     })
 
     val valid = io.instructionsValid
@@ -266,8 +266,8 @@ class Dispatcher extends Module {
     lsOffsetRegister := lsOffset
 
     // **** Assign outputs *********************************************************************************
-    io.regPortAlu.r1.address := aluR1AddressRegister
-    io.regPortAlu.r2.address := aluR2AddressRegister
+    io.regPortAlu.r1.rd := aluR1AddressRegister
+    io.regPortAlu.r2.rd := aluR2AddressRegister
     io.aluOut.function := aluFunctionRegister
     io.aluOut.in1 := io.regPortAlu.r1.value
     io.aluOut.in2 := io.regPortAlu.r2.value
@@ -277,8 +277,8 @@ class Dispatcher extends Module {
     io.aluOut.inPc := aluPcRegister
     io.aluOut.rd := aluRdAddressRegister
 
-    io.regPortLoadStore.r1.address := lsR1AddressRegister
-    io.regPortLoadStore.r2.address := lsR2AddressRegister
+    io.regPortLoadStore.r1.rd := lsR1AddressRegister
+    io.regPortLoadStore.r2.rd := lsR2AddressRegister
     io.loadStoreOut.rd := lsRdAddressRegister
     io.loadStoreOut.addressBase := io.regPortLoadStore.r1.value
     io.loadStoreOut.addressOffset := lsOffsetRegister

@@ -21,40 +21,40 @@ class Registers extends Module {
     pc := io.newPc
     
     for(i <- 1 to 31) {
-        when(io.portAlu.write.address === i.U) {
+        when(io.portAlu.write.rd === i.U) {
             registers(i) := io.portAlu.write.value
-        } .elsewhen (io.portLoadStore.write.address === i.U) {
+        } .elsewhen (io.portLoadStore.write.rd === i.U) {
             registers(i) := io.portLoadStore.write.value
         } .otherwise {
             registers(i) := registers(i)
         }
     }
 
-    io.portAlu.read.r1.value := registers(io.portAlu.read.r1.address)
-    io.portAlu.read.r2.value := registers(io.portAlu.read.r2.address)
+    io.portAlu.read.r1.value := registers(io.portAlu.read.r1.rd)
+    io.portAlu.read.r2.value := registers(io.portAlu.read.r2.rd)
 
-    io.portLoadStore.read.r1.value := registers(io.portLoadStore.read.r1.address)
-    io.portLoadStore.read.r2.value := registers(io.portLoadStore.read.r2.address)
+    io.portLoadStore.read.r1.value := registers(io.portLoadStore.read.r1.rd)
+    io.portLoadStore.read.r2.value := registers(io.portLoadStore.read.r2.rd)
 
     io.pc := pc
 }
 
 class RegisterSingleReadIO() extends Bundle {
-    val address = Input(UInt(5.W))
+    val rd = Input(UInt(5.W))
     val value = Output(UInt(32.W))
 }
 
-class RegisterSingleWriteIO() extends Bundle {
-    val address = Input(UInt(5.W))
+class CDBInIO() extends Bundle {
+    val rd = Input(UInt(5.W))
     val value = Input(UInt(32.W))
 }
 
-class RegisterReadIO() extends Bundle {
+class RegisterDualReadIO() extends Bundle {
     val r1 = new RegisterSingleReadIO()
     val r2 = new RegisterSingleReadIO()
 }
 
 class RegisterPortIO() extends Bundle {
-    val read = new RegisterReadIO()
-    val write = new RegisterSingleWriteIO()
+    val read = new RegisterDualReadIO()
+    val write = new CDBInIO()
 }

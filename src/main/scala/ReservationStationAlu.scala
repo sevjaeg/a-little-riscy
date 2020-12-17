@@ -9,7 +9,7 @@ class ReservationStationAlu(depth: Int) extends Module {
     val io = IO(new Bundle {
         val out = Flipped(new AluInIO())
         val operation = Input(new ReservationStationAluInstruction())
-        val CDBin = Flipped(new RegisterSingleWriteIO())
+        val CDBin = Flipped(new CDBInIO())
         val busy = Output(Bool())
     })
     val entries = Vec(depth, Reg(new ReservationStationAluInstruction))
