@@ -1,6 +1,13 @@
+int inc (int i);
+
 int main() {
-    int a = 5;
-    a = a + 1;
-	a = 2;
-	return a;
+	int a[5];
+	int i = 0;
+	for(;i<5;i++) {
+		a[i] = i+1;
+	}	
+}
+
+int inc(int i) {
+	return i + 1;
 }

@@ -90,19 +90,6 @@ class Dispatcher extends Module {
             pcLoadStore := pc1
             stallLoadStore := true.B
             loadStoreStallRegister := Cat(true.B, pc2, instruction2)
-        }.otherwise {
-            // TODO branches
-            /*
-            is("b1101111".U) {
-                // JAL
-            }
-            is("b1100111".U) {
-                // JALR
-            }
-            is("b1100011".U) {
-                // BRANCH
-            }
-             */
         }
     } .otherwise {  // currently stalled
         when(loadStoreStallRegister(64) === true.B) {

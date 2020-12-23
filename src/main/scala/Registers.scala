@@ -7,6 +7,7 @@ import chisel3.util._
 
 class Registers extends Module {
     val io = IO(new Bundle {
+        val portFetchUnit = new RegisterPortIO()
         val portAlu = new RegisterPortIO()
         val portLoadStore = new RegisterPortIO()
         val pc = Output(UInt(32.W))
@@ -32,6 +33,10 @@ class Registers extends Module {
 
     io.portAlu.read.r1.value := registers(io.portAlu.read.r1.rd)
     io.portAlu.read.r2.value := registers(io.portAlu.read.r2.rd)
+
+    io.portFetchUnit.read.r1.value := registers(io.portFetchUnit.read.r1.rd)
+    io.portFetchUnit.read.r2.value := registers(io.portFetchUnit.read.r2.rd)
+
 
     io.portLoadStore.read.r1.value := registers(io.portLoadStore.read.r1.rd)
     io.portLoadStore.read.r2.value := registers(io.portLoadStore.read.r2.rd)
