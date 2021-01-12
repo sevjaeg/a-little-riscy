@@ -7,6 +7,7 @@ import chisel3.util._
 
 class LoadStoreUnit extends Module {
     val io = IO(new LoadStoreIO())
+
     val loadedValue = Wire(UInt(32.W))
     val writeEnable = Wire(Bool())
     val dataOut = Wire(UInt(32.W))
@@ -118,7 +119,7 @@ class LoadStoreUnit extends Module {
 class LoadStoreInIO() extends Bundle {
     val function = Input(UInt(4.W))
     val addressBase = Input(UInt(32.W))    // word address
-    val addressOffset = Input(UInt(12.W))  // word offset
+    val addressOffset = Input(UInt(12.W))  // word offset immediate
     val storeValue = Input(UInt(32.W))
     val rd = Input(UInt(5.W))
 }

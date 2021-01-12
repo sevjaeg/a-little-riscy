@@ -9,30 +9,25 @@ class ReservationStationAlu(depth: Int) extends Module {
     val io = IO(new Bundle {
         val out = Flipped(new AluInIO())
         val operation = Input(new ReservationStationAluInstruction())
-        val CDBin = Flipped(new CDBInIO())
+        val CDBin = new CDBInIO()
         val busy = Output(Bool())
     })
+
     val entries = Vec(depth, Reg(new ReservationStationAluInstruction))
+    val entries_current = 0.U
 
     val busy = Wire(Bool())
-    val newInstruction = io.operation.func
-    busy := true.B
-    for (idx <- 0 to depth) {
-        val entry = entries(idx)
-        when(entry.func === 0.U) {
-            // Free entry, check if new instruction available
-            when(newInstruction =/= 0.U) {
-                // TODO Assign new instruction to free slot
-                newInstruction := 0.U
-            } .otherwise {
-                // Free entry and no new instruction
-                busy := false.B
+    busy := entries_current =/= depth.U
+    io.busy := busy
+
+    when(!busy) {
+        val newInstruction = io.operation.func
+        for (idx <- 0 to depth) {
+            when(entries_current === idx.U) {
+                entries(idx) := newInstruction
             }
         }
     }
-    io.busy := busy
-
-
 
     // Check if new value available on CDB
     when(io.CDBin.rd =/= 0.U) {

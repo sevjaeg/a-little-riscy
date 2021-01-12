@@ -9,11 +9,17 @@ class AluInIO() extends Bundle {
     val function = Input(UInt(4.W))
     val in1 = Input(UInt(32.W))
     val in2 = Input(UInt(32.W))
-    val hasImmediate = Input(UInt(1.W))
-    val inImmediate = Input(UInt(20.W))
-    val isAUIPC = Input(UInt(1.W))
-    val inPc = Input(UInt(32.W))
     val rd = Input(UInt(5.W))
+
+    val in1Select = Input(UInt(2.W))
+    val in2Select = Input(UInt(2.W))
+
+    val aluFwd1 = Input(UInt(32.W))
+    val lsuFwd1 = Input(UInt(32.W))
+    val aluFwd2 = Input(UInt(32.W))
+    val lsuFwd2 = Input(UInt(32.W))
+    val immediate = Input(UInt(20.W))
+    val pc = Input(UInt(32.W))
 }
 
 class Alu extends Module {
@@ -28,16 +34,22 @@ class Alu extends Module {
     in1 := 0.U
     in2 := 0.U
 
-    // Multiplexer: register or immediate
-    switch(io.in.hasImmediate) {
-        is(true.B) {in2 := io.in.inImmediate}
-        is(false.B) {in2 := io.in.in2}
+    // Multiplexer for input 1: Register, aluForwarding, lsuForwarding or PC
+    switch(io.in.in1Select) {
+        is("b00".U) {in1 := io.in.in1}             // Register
+        is("b01".U) {in1 := io.in.aluFwd1}  // aluForwarding
+        is("b10".U) {in1 := io.in.lsuFwd1}  // lsuForwarding
+        is("b11".U) {in1 := io.in.pc}              // PC
     }
-    // Multiplexer: register or pc
-    switch(io.in.isAUIPC) {
-        is(true.B) {in1 := io.in.inPc}
-        is(false.B) {in1 := io.in.in1}
+
+    // Multiplexer for input 2: Register, aluForwarding, lsuForwarding or immediate
+    switch(io.in.in2Select) {
+        is("b00".U) {in2 := io.in.in2}             // Register
+        is("b01".U) {in2 := io.in.aluFwd2}  // aluForwarding
+        is("b10".U) {in2 := io.in.lsuFwd2}  // lsuForwarding
+        is("b11".U) {in2 := io.in.immediate}       // PC
     }
+
     val result = Wire(UInt(32.W))
 
     when(function === "b1111".U) {  // addition: ADD(I)
