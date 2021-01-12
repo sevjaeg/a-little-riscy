@@ -258,11 +258,13 @@ class Dispatcher extends Module {
     io.aluOut.function := aluFunctionRegister
     io.aluOut.in1 := io.regPortAlu.r1.value
     io.aluOut.in2 := io.regPortAlu.r2.value
-    io.aluOut.hasImmediate := aluHasImmediateRegister
-    io.aluOut.inImmediate := aluImmediateRegister
-    io.aluOut.isAUIPC := aluIsAUIPCRegister
-    io.aluOut.inPc := aluPcRegister
     io.aluOut.rd := aluRdAddressRegister
+
+    // TODO ALU input select coding
+    io.aluOut.in1Select := "b00".U
+    io.aluOut.in2Select := "b00".U
+    io.aluOut.immediate := aluImmediateRegister
+    io.aluOut.pc := aluPcRegister
 
     io.regPortLoadStore.r1.rd := lsR1AddressRegister
     io.regPortLoadStore.r2.rd := lsR2AddressRegister
