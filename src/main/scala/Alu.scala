@@ -14,10 +14,10 @@ class AluInIO() extends Bundle {
     val in1Select = Input(UInt(2.W))
     val in2Select = Input(UInt(2.W))
 
-    val aluForwarding1 = Input(UInt(32.W))
-    val lsuForwarding1 = Input(UInt(32.W))
-    val aluForwarding2 = Input(UInt(32.W))
-    val lsuForwarding2 = Input(UInt(32.W))
+    val aluFwd1 = Input(UInt(32.W))
+    val lsuFwd1 = Input(UInt(32.W))
+    val aluFwd2 = Input(UInt(32.W))
+    val lsuFwd2 = Input(UInt(32.W))
     val immediate = Input(UInt(20.W))
     val pc = Input(UInt(32.W))
 }
@@ -37,16 +37,16 @@ class Alu extends Module {
     // Multiplexer for input 1: Register, aluForwarding, lsuForwarding or PC
     switch(io.in.in1Select) {
         is("b00".U) {in1 := io.in.in1}             // Register
-        is("b01".U) {in1 := io.in.aluForwarding1}  // aluForwarding
-        is("b10".U) {in1 := io.in.lsuForwarding1}  // lsuForwarding
+        is("b01".U) {in1 := io.in.aluFwd1}  // aluForwarding
+        is("b10".U) {in1 := io.in.lsuFwd1}  // lsuForwarding
         is("b11".U) {in1 := io.in.pc}              // PC
     }
 
     // Multiplexer for input 2: Register, aluForwarding, lsuForwarding or immediate
     switch(io.in.in2Select) {
         is("b00".U) {in2 := io.in.in2}             // Register
-        is("b01".U) {in2 := io.in.aluForwarding2}  // aluForwarding
-        is("b10".U) {in2 := io.in.lsuForwarding2}  // lsuForwarding
+        is("b01".U) {in2 := io.in.aluFwd2}  // aluForwarding
+        is("b10".U) {in2 := io.in.lsuFwd2}  // lsuForwarding
         is("b11".U) {in2 := io.in.immediate}       // PC
     }
 
