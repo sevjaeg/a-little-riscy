@@ -45,6 +45,7 @@ class FetchUnit extends Module {
     val isBranch1 = instructionIn1(6,4) === "b110".U
     val isBranch2 = instructionIn2(6,4) === "b110".U
     val isBranch = isBranch1 | isBranch2
+
     val branchInstruction = Wire(UInt(32.W))
     val branchAddInstruction = Wire(UInt(32.W))
     val branchNeighbourInstruction = Wire(UInt(32.W))
@@ -57,7 +58,7 @@ class FetchUnit extends Module {
     branchAddInstruction := nop
     branchNeighbourInstruction := nop
     branchTarget := 0.U
-    branchTaken := true.B
+    branchTaken := false.B
     branchRd := 0.U
     pcBranch := 0.U
 
@@ -75,7 +76,8 @@ class FetchUnit extends Module {
         pcBranch := pc2
     }
 
-    //TODO validate
+    // TODO validate
+    // TODO Stall everything until reg value available
     when(queueReady === true.B) {
         when(isBranch) {
             when(branchInstruction(3) === true.B) {  // JAL
@@ -125,8 +127,12 @@ class FetchUnit extends Module {
                     instruction1 := branchNeighbourInstruction
                     instruction2 := branchAddInstruction
                 }
-            } .otherwise {  // only applicable for B not for J type, thus branchAddInstruction not used
-                pcOut := pc + 2.U
+            } .otherwise {  // TODO only applicable for B not for J type, thus branchAddInstruction not used
+                when(pc > 127.U) { // instruction memory size
+                    pcOut := pc
+                }.otherwise {
+                    pcOut := pc + 2.U
+                }
                 when(isBranch1) {
                     instruction1 := nop
                     instruction2 := branchNeighbourInstruction
@@ -144,11 +150,10 @@ class FetchUnit extends Module {
         }
     }
 
-    // TODO reassign pc1 and pc2 in case of branch
     io.IMem.port1.address := pc1
     io.IMem.port2.address := pc2
     io.pcOut := pcOut
 
-    io.queue.bits := Cat(pc1, instruction1, pc2, instruction1)  // TODO
+    io.queue.bits := Cat(pc1, instruction1, pc2, instruction2)
     io.queue.valid := true.B
 }

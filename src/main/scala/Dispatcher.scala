@@ -17,30 +17,75 @@ class Dispatcher extends Module {
         val regPortLoadStore = Flipped(new RegisterDualReadIO())
     })
 
+    // Instructions from queue
     val valid = io.instructionsValid
     val pc1 = io.instructions(127,96)
     val instruction1 = io.instructions(95,64)
     val pc2 = io.instructions(63,32)
     val instruction2 = io.instructions(31,0)
 
-    val stallAlu = Wire(Bool())
-    val stallLoadStore = Wire(Bool())
-    val aluStallRegister = RegInit(0.U(65.W))  // holds stalled bit, pc, instruction
-    val loadStoreStallRegister = RegInit(0.U(65.W)) // holds stalled bit, pc, instruction
-    aluStallRegister := 0.U
-    loadStoreStallRegister := 0.U
-
+    // Instructions after function unit mapping
+    val nop = 0.U(32.W)
     val instructionAlu = Wire(UInt(32.W))
     val pcAlu = Wire(UInt(32.W))
     val instructionLoadStore = Wire(UInt(32.W))
     val pcLoadStore = Wire(UInt(32.W))
-
-    val nop = 0.U(32.W)
     instructionAlu := nop
     pcAlu := nop
     instructionLoadStore := nop
     pcLoadStore := nop
 
+    // Pipelining Registers
+    val aluFunctionRegister = RegInit(0.U(4.W))
+    val aluIn2Register = RegInit(0.U(32.W))
+    val aluR1AddressRegister = RegInit(0.U(5.W))
+    val aluR2AddressRegister = RegInit(0.U(5.W))
+    val aluRdAddressRegister = RegInit(0.U(5.W))
+    val aluHasImmediateRegister = RegInit(0.U(1.W))
+    val aluImmediateRegister = RegInit(0.U(20.W))
+    val aluIsAUIPCRegister = RegInit(0.U(1.W))
+    val aluPcRegister = RegInit(0.U(32.W))
+    val lsFunctionRegister = RegInit(0.U(4.W))
+    val lsR1AddressRegister = RegInit(0.U(5.W))
+    val lsR2AddressRegister = RegInit(0.U(5.W))
+    val lsRdAddressRegister = RegInit(0.U(5.W))
+    val lsOffsetRegister = RegInit(0.U(12.W))
+
+    // Handling of structural hazards
+    val stallAlu = Wire(Bool())
+    val stallLoadStore = Wire(Bool())
+    val aluStallRegister = RegInit(0.U(65.W))  // holds stalled bit, pc, instruction
+    val loadStoreStallRegister = RegInit(0.U(65.W)) // holds stalled bit, pc, instruction
+    stallAlu := false.B
+    stallLoadStore := false.B
+    aluStallRegister := 0.U
+    loadStoreStallRegister := 0.U
+
+    // Handling of data hazards
+    val lastAluRd = aluRdAddressRegister
+    val lastLoadStoreRd = lsRdAddressRegister
+    val aluBeforeLoadStore = Wire(Bool())
+    val forwardAluR1Alu = Wire(Bool())
+    val forwardAluR2Alu = Wire(Bool())
+    val forwardLsuAddressAlu = Wire(Bool())
+    val forwardLsuValueAlu = Wire(Bool())
+    val forwardAluR1Lsu = Wire(Bool())
+    val forwardAluR2Lsu = Wire(Bool())
+    val forwardLsuAddressLsu = Wire(Bool())
+    val forwardLsuValueLsu = Wire(Bool())
+    aluBeforeLoadStore := false.B
+    forwardAluR1Alu := false.B
+    forwardAluR2Alu := false.B
+    forwardLsuAddressAlu := false.B
+    forwardLsuValueAlu := false.B
+    forwardAluR1Lsu := false.B
+    forwardAluR2Lsu := false.B
+    forwardLsuAddressLsu := false.B
+    forwardLsuValueLsu := false.B
+
+
+
+    // Function unit mapping and handling of structural hazards ********************************************************
     // FENCE, ECALL, EBREAK treated as NOP
     val isNop1 = instruction1 === 0.U | instruction1(6,0) === "b0001111".U | instruction1(6,4) === "b111".U
     val isAlu1 = (instruction1(4, 0) === "b10011".U & instruction1(6) === false.B) | instruction1(3,0) === "b0111".U
@@ -49,8 +94,6 @@ class Dispatcher extends Module {
     val isAlu2 = instruction2(4, 0) === "b10011".U & instruction2(6) === false.B | instruction2(3,0) === "b0111".U
     val isLoadStore2 = instruction2(4, 0) === "b00011".U & instruction2(6) === false.B
 
-    stallAlu := false.B
-    stallLoadStore := false.B
     val stalledLastCycle = loadStoreStallRegister(64) | aluStallRegister(64)
     when(!stalledLastCycle) {
         when((isNop1 & isLoadStore2) | (isAlu1 & isNop2) | (isNop1 & isNop2) | (isAlu1 & isLoadStore2)) {
@@ -66,8 +109,8 @@ class Dispatcher extends Module {
             pcAlu := pc1
             instructionLoadStore := instruction2
             pcLoadStore := pc2
+            aluBeforeLoadStore := true.B
         }.elsewhen((isAlu2 & isLoadStore1) | (isNop2 & isLoadStore1) | (isAlu2 & isNop1)) {
-            // TODO handle data hazard
             instructionLoadStore := instruction1
             pcLoadStore := pc1
             when((!(instruction1(11,7) === 0.U)) & (instruction1(11,7) === instruction2(11,7))) {
@@ -79,18 +122,17 @@ class Dispatcher extends Module {
                 pcAlu := pc2
             }
         }.elsewhen(isAlu1 & isAlu2) {
-            //TODO handle data hazard
             instructionAlu := instruction1
             pcAlu := pc1
             stallAlu := true.B
             aluStallRegister := Cat(true.B, pc2, instruction2)
         }.elsewhen(isLoadStore1 & isLoadStore2) {
-            // TODO handle data hazard
             instructionLoadStore := instruction1
             pcLoadStore := pc1
             stallLoadStore := true.B
             loadStoreStallRegister := Cat(true.B, pc2, instruction2)
         }
+
     } .otherwise {  // currently stalled
         when(loadStoreStallRegister(64) === true.B) {
             instructionLoadStore := loadStoreStallRegister(31,0)
@@ -103,20 +145,9 @@ class Dispatcher extends Module {
             stallAlu := false.B
             aluStallRegister := 0.U
         }
-
     }
 
-    // TODO check data hazards
-    // WAW or WAR conflict
-    // queue: not ready
-    // store one instruction
-    // insert 2 NOPs
-    // schedule
-    // queue ready
-    // TODO forwarding to reduce penalty
-
     //******* ALU ******************************************************************************************
-
     val bitsOpCodeAlu = instructionAlu(6, 0)
     val bitsRdAlu = instructionAlu(11, 7)
     val bitsFunctionAlu = instructionAlu(14, 12)
@@ -143,7 +174,6 @@ class Dispatcher extends Module {
     aluHasImmediate := false.B
     aluIsAUIPC := false.B
     aluImmediate := 0.U
-
 
     switch(bitsOpCodeAlu) {
         is("b0110011".U) { // ALU
@@ -220,16 +250,60 @@ class Dispatcher extends Module {
         }
     }
 
+    // Handling of Data Hazards ***************************************************************************
+    when(aluBeforeLoadStore) {
+        when(aluRdAddress =/= 0.U) {
+            when(lsR1Address === aluRdAddress || lsR2Address === aluRdAddress) {
+                loadStoreStallRegister := Cat(true.B, pcLoadStore, instructionLoadStore)
+                // TODO make sure values are not written
+            }
+        }
+    } .otherwise{  // instruction 1: L/S, instruction 2: ALU
+        when(lsRdAddress =/= 0.U) {
+            when(aluR1Address === lsRdAddress || aluR2Address === lsRdAddress) {
+                aluStallRegister := Cat(true.B, pcAlu, instructionAlu)
+                // TODO make sure values are not written
+            }
+        }
+    }
+
+    // Forward if I1 or I2 depends on one previous
+    when(aluR1Address =/= 0.U) {
+        when(aluR1Address === lastAluRd) {
+            forwardAluR1Alu := true.B
+        } .elsewhen(aluR1Address === lastLoadStoreRd) {
+            forwardAluR1Lsu := true.B
+        }
+    }
+    when(aluR2Address =/= 0.U) {
+        when(aluR2Address === lastAluRd) {
+            forwardAluR2Alu := true.B
+        } .elsewhen(aluR2Address === lastLoadStoreRd) {
+            forwardAluR2Lsu := true.B
+        }
+    }
+
+    when(lsAddressBase =/= 0.U) {
+        when(lsAddressBase === lastAluRd) {
+            forwardLsuAddressAlu := true.B
+        } .elsewhen(lsAddressBase === lastLoadStoreRd) {
+            forwardLsuAddressLsu := true.B
+        }
+    }
+    when(lsStoreValue =/= 0.U) {
+        when(lsStoreValue === lastAluRd) {
+            forwardLsuValueAlu := true.B
+        } .elsewhen(lsStoreValue === lastLoadStoreRd) {
+            forwardLsuValueLsu := true.B
+        }
+    }
+
+    // TODO encode forwarding signals and adjust pipelining register accordingly
+
+
     // Pipelining Registers *********************************************************************************
-    val aluFunctionRegister = RegInit(0.U(4.W))
-    val aluIn2Register = RegInit(0.U(32.W))
-    val aluR1AddressRegister = RegInit(0.U(5.W))
-    val aluR2AddressRegister = RegInit(0.U(5.W))
-    val aluRdAddressRegister = RegInit(0.U(5.W))
-    val aluHasImmediateRegister = RegInit(0.U(1.W))
-    val aluImmediateRegister = RegInit(0.U(20.W))
-    val aluIsAUIPCRegister = RegInit(0.U(1.W))
-    val aluPcRegister = RegInit(0.U(32.W))
+
+    // Set to zero if respective unit stalled
 
     aluFunctionRegister := aluFunction
     aluRdAddressRegister := aluRdAddress
@@ -240,12 +314,6 @@ class Dispatcher extends Module {
     aluIsAUIPCRegister := aluIsAUIPC
     aluPcRegister := pcAlu
 
-    val lsFunctionRegister = RegInit(0.U(4.W))
-    val lsR1AddressRegister = RegInit(0.U(5.W))
-    val lsR2AddressRegister = RegInit(0.U(5.W))
-    val lsRdAddressRegister = RegInit(0.U(5.W))
-    val lsOffsetRegister = RegInit(0.U(12.W))
-
     lsFunctionRegister := lsFunction
     lsR1AddressRegister := lsR1Address
     lsR2AddressRegister := lsR2Address
@@ -253,6 +321,7 @@ class Dispatcher extends Module {
     lsOffsetRegister := lsOffset
 
     // **** Assign outputs *********************************************************************************
+
     io.regPortAlu.r1.rd := aluR1AddressRegister
     io.regPortAlu.r2.rd := aluR2AddressRegister
     io.aluOut.function := aluFunctionRegister
@@ -272,6 +341,6 @@ class Dispatcher extends Module {
     io.loadStoreOut.function := lsFunctionRegister
     io.loadStoreOut.storeValue := io.regPortLoadStore.r2.value
 
-    // TODO
+    // TODO replace with 65 bit register value
     io.ready := !(stallAlu | stallLoadStore)
 }
