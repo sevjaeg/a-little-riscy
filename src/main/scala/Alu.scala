@@ -22,10 +22,15 @@ class AluInIO() extends Bundle {
     val pc = Input(UInt(32.W))
 }
 
+class AluOutIO() extends Bundle {
+    val value = Input(UInt(32.W))
+    val rd = Input(UInt(5.W))
+}
+
 class Alu extends Module {
     val io = IO(new Bundle {
         val in = new AluInIO()
-        val CDBout = Flipped(new CDBInIO())
+        val out = new AluOutIO()
     })
 
     val function = io.in.function
@@ -85,9 +90,9 @@ class Alu extends Module {
 
     val resultRegister = RegInit(0.U(32.W))
     resultRegister := result
-    io.CDBout.value := resultRegister
+    io.out.value := resultRegister
 
     val rdRegister =  RegInit(0.U(5.W))
     rdRegister := io.in.rd
-    io.CDBout.rd := rdRegister
+    io.out.rd := rdRegister
 }
