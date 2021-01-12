@@ -87,8 +87,6 @@ class Dispatcher extends Module {
     forwardLsuAddressLsu := false.B
     forwardLsuValueLsu := false.B
 
-
-
     // Function unit mapping and handling of structural hazards ********************************************************
     // FENCE, ECALL, EBREAK treated as NOP
     val isNop1 = instruction1 === 0.U | instruction1(6,0) === "b0001111".U | instruction1(6,4) === "b111".U
@@ -333,9 +331,13 @@ class Dispatcher extends Module {
     lsRdAddressRegister := lsRdAddress
     lsOffsetRegister := lsOffset
 
-    // TODO encoding signals for Load Store
+    lsIn1SelectRegister:= Cat(forwardLsuValueAlu | forwardLsuValueLsu, forwardLsuValueLsu)
+    lsIn2SelectRegister := Cat(forwardLsuAddressAlu | forwardLsuAddressLsu, forwardLsuAddressLsu)
+
 
     // **** Assign outputs *********************************************************************************
+
+    // TODO drive correct signals (change I/O structure)
 
     io.regPortAlu.r1.rd := aluR1AddressRegister
     io.regPortAlu.r2.rd := aluR2AddressRegister
@@ -352,11 +354,12 @@ class Dispatcher extends Module {
     io.regPortLoadStore.r1.rd := lsR1AddressRegister
     io.regPortLoadStore.r2.rd := lsR2AddressRegister
     io.loadStoreOut.rd := lsRdAddressRegister
-    io.loadStoreOut.addressBase := io.regPortLoadStore.r1.value
+    io.loadStoreOut.addressBaseReg := io.regPortLoadStore.r1.value
     io.loadStoreOut.addressOffset := lsOffsetRegister
     io.loadStoreOut.function := lsFunctionRegister
-    io.loadStoreOut.storeValue := io.regPortLoadStore.r2.value
+    io.loadStoreOut.valueReg := io.regPortLoadStore.r2.value
+    io.loadStoreOut.addressBaseSelect := lsIn2SelectRegister
+    io.loadStoreOut.valueSelect := lsIn1SelectRegister
 
-    // TODO replace with 65 bit register value
     io.ready := !(stallAlu | stallLoadStore)
 }

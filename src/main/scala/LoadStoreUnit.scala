@@ -9,17 +9,17 @@ class LoadStoreUnit extends Module {
     val io = IO(new LoadStoreIO())
 
     val storeValue = Wire(UInt(32.W))
+    storeValue := 0.U
     switch(io.in.valueSelect) {
         is("b00".U) {storeValue := io.in.valueReg}          // Register
-        is("b01".U) {storeValue := 0.U}                     // Unused
         is("b10".U) {storeValue := io.in.valueAluFwd}       // aluForwarding
         is("b11".U) {storeValue := io.in.valueLsuFwd}       // lsuForwarding
     }
 
     val addressBase = Wire(UInt(32.W))
+    addressBase := 0.U
     switch(io.in.addressBaseSelect) {
         is("b00".U) {addressBase := io.in.addressBaseReg}    // Register
-        is("b01".U) {addressBase := 0.U}                     // Unused
         is("b10".U) {addressBase := io.in.addressBaseAluFwd} // aluForwarding
         is("b11".U) {addressBase := io.in.addressBaseLsuFwd} // lsuForwarding
     }

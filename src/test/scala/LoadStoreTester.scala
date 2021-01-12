@@ -26,28 +26,28 @@ class LoadStoreTester(dut: MemSys) extends PeekPokeTester(dut) {
     offset = 3
     storeValue = -10
     poke(dut.io.in.function, func_write_b)
-    poke(dut.io.in.addressBase, address)
+    poke(dut.io.in.addressBaseReg, address)
     poke(dut.io.in.addressOffset, offset)
-    poke(dut.io.in.storeValue, storeValue)
+    poke(dut.io.in.valueReg, storeValue)
     step(1)
     poke(dut.io.in.function, func_read_bs)
-    poke(dut.io.in.addressBase, address)
+    poke(dut.io.in.addressBaseReg, address)
     poke(dut.io.in.addressOffset, offset)
-    poke(dut.io.in.storeValue, storeValue)
+    poke(dut.io.in.valueReg, storeValue)
     step(1)
 
     address = 20
     offset = 2
     storeValue = -10
     poke(dut.io.in.function, func_write_h)
-    poke(dut.io.in.addressBase, address)
+    poke(dut.io.in.addressBaseReg, address)
     poke(dut.io.in.addressOffset, offset)
-    poke(dut.io.in.storeValue, storeValue)
+    poke(dut.io.in.valueReg, storeValue)
     step(1)
     poke(dut.io.in.function, func_read_hs)
-    poke(dut.io.in.addressBase, address)
+    poke(dut.io.in.addressBaseReg, address)
     poke(dut.io.in.addressOffset, offset)
-    poke(dut.io.in.storeValue, storeValue)
+    poke(dut.io.in.valueReg, storeValue)
     step(1)
 
     /*
