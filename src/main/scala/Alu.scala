@@ -5,7 +5,7 @@
 import chisel3._
 import chisel3.util._
 
-class AluInIO() extends Bundle {
+class AluInDispatcherIO() extends Bundle {
     val function = Input(UInt(4.W))
     val in1 = Input(UInt(32.W))
     val in2 = Input(UInt(32.W))
@@ -13,13 +13,15 @@ class AluInIO() extends Bundle {
 
     val in1Select = Input(UInt(2.W))
     val in2Select = Input(UInt(2.W))
+    val immediate = Input(UInt(20.W))
+    val pc = Input(UInt(32.W))
+}
 
+class AluInForwardingIO() extends Bundle {
     val aluFwd1 = Input(UInt(32.W))
     val lsuFwd1 = Input(UInt(32.W))
     val aluFwd2 = Input(UInt(32.W))
     val lsuFwd2 = Input(UInt(32.W))
-    val immediate = Input(UInt(20.W))
-    val pc = Input(UInt(32.W))
 }
 
 class AluOutIO() extends Bundle {
@@ -29,7 +31,8 @@ class AluOutIO() extends Bundle {
 
 class Alu extends Module {
     val io = IO(new Bundle {
-        val in = new AluInIO()
+        val in = new AluInDispatcherIO()
+        val inFwd = new AluInForwardingIO()
         val out = new AluOutIO()
     })
 
@@ -42,16 +45,16 @@ class Alu extends Module {
     // Multiplexer for input 1: Register, aluForwarding, lsuForwarding or PC
     switch(io.in.in1Select) {
         is("b00".U) {in1 := io.in.in1}             // Register
-        is("b11".U) {in1 := io.in.aluFwd1}         // aluForwarding
-        is("b10".U) {in1 := io.in.lsuFwd1}         // lsuForwarding
+        is("b11".U) {in1 := io.inFwd.aluFwd1}      // aluForwarding
+        is("b10".U) {in1 := io.inFwd.lsuFwd1}      // lsuForwarding
         is("b01".U) {in1 := io.in.pc}              // PC
     }
 
     // Multiplexer for input 2: Register, aluForwarding, lsuForwarding or immediate
     switch(io.in.in2Select) {
         is("b00".U) {in2 := io.in.in2}             // Register
-        is("b11".U) {in2 := io.in.aluFwd2}         // aluForwarding
-        is("b10".U) {in2 := io.in.lsuFwd2}         // lsuForwarding
+        is("b11".U) {in2 := io.inFwd.aluFwd2}      // aluForwarding
+        is("b10".U) {in2 := io.inFwd.lsuFwd2}      // lsuForwarding
         is("b01".U) {in2 := io.in.immediate}       // PC
     }
 
