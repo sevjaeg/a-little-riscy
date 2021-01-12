@@ -37,17 +37,17 @@ class Alu extends Module {
     // Multiplexer for input 1: Register, aluForwarding, lsuForwarding or PC
     switch(io.in.in1Select) {
         is("b00".U) {in1 := io.in.in1}             // Register
-        is("b01".U) {in1 := io.in.aluFwd1}  // aluForwarding
-        is("b10".U) {in1 := io.in.lsuFwd1}  // lsuForwarding
-        is("b11".U) {in1 := io.in.pc}              // PC
+        is("b11".U) {in1 := io.in.aluFwd1}         // aluForwarding
+        is("b10".U) {in1 := io.in.lsuFwd1}         // lsuForwarding
+        is("b01".U) {in1 := io.in.pc}              // PC
     }
 
     // Multiplexer for input 2: Register, aluForwarding, lsuForwarding or immediate
     switch(io.in.in2Select) {
         is("b00".U) {in2 := io.in.in2}             // Register
-        is("b01".U) {in2 := io.in.aluFwd2}  // aluForwarding
-        is("b10".U) {in2 := io.in.lsuFwd2}  // lsuForwarding
-        is("b11".U) {in2 := io.in.immediate}       // PC
+        is("b11".U) {in2 := io.in.aluFwd2}         // aluForwarding
+        is("b10".U) {in2 := io.in.lsuFwd2}         // lsuForwarding
+        is("b01".U) {in2 := io.in.immediate}       // PC
     }
 
     val result = Wire(UInt(32.W))

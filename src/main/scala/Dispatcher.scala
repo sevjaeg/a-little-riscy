@@ -45,11 +45,15 @@ class Dispatcher extends Module {
     val aluImmediateRegister = RegInit(0.U(20.W))
     val aluIsAUIPCRegister = RegInit(0.U(1.W))
     val aluPcRegister = RegInit(0.U(32.W))
+    val aluIn1SelectRegister = RegInit(0.U(2.W))
+    val aluIn2SelectRegister = RegInit(0.U(2.W))
     val lsFunctionRegister = RegInit(0.U(4.W))
     val lsR1AddressRegister = RegInit(0.U(5.W))
     val lsR2AddressRegister = RegInit(0.U(5.W))
     val lsRdAddressRegister = RegInit(0.U(5.W))
     val lsOffsetRegister = RegInit(0.U(12.W))
+    val lsIn1SelectRegister = RegInit(0.U(2.W))
+    val lsIn2SelectRegister = RegInit(0.U(2.W))
 
     // Handling of structural hazards
     val stallAlu = Wire(Bool())
@@ -255,14 +259,14 @@ class Dispatcher extends Module {
         when(aluRdAddress =/= 0.U) {
             when(lsR1Address === aluRdAddress || lsR2Address === aluRdAddress) {
                 loadStoreStallRegister := Cat(true.B, pcLoadStore, instructionLoadStore)
-                // TODO make sure values are not written
+                stallLoadStore := true.B
             }
         }
     } .otherwise{  // instruction 1: L/S, instruction 2: ALU
         when(lsRdAddress =/= 0.U) {
             when(aluR1Address === lsRdAddress || aluR2Address === lsRdAddress) {
                 aluStallRegister := Cat(true.B, pcAlu, instructionAlu)
-                // TODO make sure values are not written
+                stallAlu := true.B
             }
         }
     }
@@ -298,27 +302,38 @@ class Dispatcher extends Module {
         }
     }
 
-    // TODO encode forwarding signals and adjust pipelining register accordingly
-
 
     // Pipelining Registers *********************************************************************************
 
-    // Set to zero if respective unit stalled
+    when(stallAlu) {
+        aluFunctionRegister := 0.U
+    } .otherwise {
+        aluFunctionRegister := aluFunction
+    }
 
-    aluFunctionRegister := aluFunction
     aluRdAddressRegister := aluRdAddress
     aluR1AddressRegister := aluR1Address
     aluR2AddressRegister := aluR2Address
-    aluHasImmediateRegister := aluHasImmediate
+    aluHasImmediateRegister := aluHasImmediate  // TODO remove
     aluImmediateRegister := aluImmediate
-    aluIsAUIPCRegister := aluIsAUIPC
+    aluIsAUIPCRegister := aluIsAUIPC  // TODO remove
     aluPcRegister := pcAlu
 
-    lsFunctionRegister := lsFunction
+    aluIn1SelectRegister := Cat(forwardAluR1Lsu | forwardAluR1Alu, aluIsAUIPC | forwardAluR1Lsu)
+    aluIn2SelectRegister := Cat(forwardAluR2Lsu | forwardAluR2Alu, aluHasImmediate | forwardAluR2Lsu)
+
+    when(stallLoadStore) {
+        lsFunctionRegister := 0.U
+    } .otherwise {
+        lsFunctionRegister := lsFunction
+    }
+
     lsR1AddressRegister := lsR1Address
     lsR2AddressRegister := lsR2Address
     lsRdAddressRegister := lsRdAddress
     lsOffsetRegister := lsOffset
+
+    // TODO encoding signals for Load Store
 
     // **** Assign outputs *********************************************************************************
 
@@ -329,9 +344,8 @@ class Dispatcher extends Module {
     io.aluOut.in2 := io.regPortAlu.r2.value
     io.aluOut.rd := aluRdAddressRegister
 
-    // TODO ALU input select coding
-    io.aluOut.in1Select := "b00".U
-    io.aluOut.in2Select := "b00".U
+    io.aluOut.in1Select := aluIn1SelectRegister
+    io.aluOut.in2Select := aluIn2SelectRegister
     io.aluOut.immediate := aluImmediateRegister
     io.aluOut.pc := aluPcRegister
 
