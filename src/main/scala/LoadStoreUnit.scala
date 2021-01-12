@@ -14,6 +14,7 @@ class LoadStoreUnit extends Module {
         is("b00".U) {storeValue := io.in.valueReg}          // Register
         is("b10".U) {storeValue := io.in.valueAluFwd}       // aluForwarding
         is("b11".U) {storeValue := io.in.valueLsuFwd}       // lsuForwarding
+
     }
 
     val addressBase = Wire(UInt(32.W))
@@ -132,18 +133,21 @@ class LoadStoreUnit extends Module {
     io.memory.writeMask := writeMask
 }
 
-class LoadStoreInIO() extends Bundle {
+class LoadStoreInDispatcherIO() extends Bundle {
     val function = Input(UInt(4.W))
     val addressOffset = Input(UInt(12.W))    // word offset immediate
     val rd = Input(UInt(5.W))
 
     val addressBaseSelect = Input(UInt(2.W))
     val addressBaseReg = Input(UInt(32.W))       // word address
-    val addressBaseAluFwd = Input(UInt(32.W))
-    val addressBaseLsuFwd = Input(UInt(32.W))
 
     val valueSelect = Input(UInt(2.W))
     val valueReg = Input(UInt(32.W))
+}
+
+class LoadStoreInForwardingIO() extends Bundle {
+    val addressBaseAluFwd = Input(UInt(32.W))
+    val addressBaseLsuFwd = Input(UInt(32.W))
     val valueAluFwd = Input(UInt(32.W))
     val valueLsuFwd = Input(UInt(32.W))
 }
@@ -154,7 +158,8 @@ class LoadStoreOutIO() extends Bundle {
 }
 
 class LoadStoreIO() extends Bundle {
-    val in = new LoadStoreInIO()
+    val in = new LoadStoreInDispatcherIO()
+    val inFwd = new LoadStoreInForwardingIO()
     val out = new LoadStoreOutIO()
     val memory = Flipped(new MemoryIO())
 }

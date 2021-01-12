@@ -11,7 +11,7 @@ class Dispatcher extends Module {
         val instructions = Input(UInt(128.W))
         val instructionsValid = Input(Bool())
         val ready = Output(Bool())
-        val aluOut = Flipped(new AluInIO())
+        val aluOut = Flipped(new AluInDispatcherIO())
         val loadStoreOut = Flipped(new LoadStoreInIO())
         val regPortAlu = Flipped(new RegisterDualReadIO())
         val regPortLoadStore = Flipped(new RegisterDualReadIO())
