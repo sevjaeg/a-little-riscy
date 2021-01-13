@@ -13,12 +13,14 @@ class FetchUnit extends Module {
         val IMem = Flipped(new IMemIO())
         val registers = Flipped(new RegisterPortIO)
         val queue = new DecoupledIO(UInt(128.W))
+        val pipelineFlushed = Input(Bool())
     })
     val pc = io.pcIn
     val pc1 = Wire(UInt(32.W))
     val pc2 = Wire(UInt(32.W))
     val pcOut = Wire(UInt(32.W))
     val queueReady = io.queue.ready
+    val flushed = io.pipelineFlushed
 
     val nop = 0.U(32.W)
 
@@ -62,6 +64,8 @@ class FetchUnit extends Module {
     branchRd := 0.U
     pcBranch := 0.U
 
+    val stallingPipeline = RegInit(false.B)
+
     pc1 := pc
     pc2 := pc + 1.U
     pcOut := pc
@@ -78,76 +82,97 @@ class FetchUnit extends Module {
 
     // TODO validate
     // TODO Stall everything until reg value available
-    when(queueReady === true.B) {
+    when(queueReady) {
         when(isBranch) {
-            when(branchInstruction(3) === true.B) {  // JAL
-                branchTaken := true.B
-                branchTarget := (pcBranch.asSInt() + (Cat(branchInstruction(31), branchInstruction(19,12), branchInstruction(20), branchInstruction(30,21), false.B)  >> 2).asSInt()).asUInt()
-                branchRd := branchInstruction(11,7)
-            } .elsewhen(Cat(branchInstruction(14,12), branchInstruction(2)) === "b0001".U) { // JALR
-                branchTaken := true.B
-                io.registers.read.r1.rd := branchInstruction(19,15)
-                branchTarget := ((r1Value.asSInt() + branchInstruction(31,20).asSInt()).asUInt() >> 2)
-                branchRd := branchInstruction(11,7)
-            } .otherwise {  // Branch
-                branchTarget := (pc.asSInt() + (Cat(branchInstruction(31), branchInstruction(7), branchInstruction(30,25), branchInstruction(11,8), false.B)  >> 2).asSInt()).asUInt()
-                io.registers.read.r1.rd := branchInstruction(19,15)
-                io.registers.read.r2.rd := branchInstruction(24,20)
-                switch(branchInstruction(14, 12)) {
-                    is("b000".U) { // BEQ
-                        branchTaken := r1Value === r2Value
+            when(!stallingPipeline) {  // new branch -> stall dispatching
+                instruction1 := nop
+                instruction2 := nop
+                stallingPipeline := true.B
+            } .otherwise {             // dispatching already stalled
+                when(!flushed) {       // pipeline not yet empty -> wait
+                    instruction1 := nop
+                    instruction2 := nop
+                    stallingPipeline := true.B
+                } .otherwise {         // Pipeline flushed -> everything ready
+                    stallingPipeline := false.B
+                    when(branchInstruction(3) === true.B) {  // JAL
+                        branchTaken := true.B
+                        branchTarget := (pcBranch.asSInt() + (Cat(branchInstruction(31), branchInstruction(19,12), branchInstruction(20), branchInstruction(30,21), false.B)  >> 2).asSInt()).asUInt()
+                        branchRd := branchInstruction(11,7)
+                    } .elsewhen(Cat(branchInstruction(14,12), branchInstruction(2)) === "b0001".U) { // JALR
+                        branchTaken := true.B
+                        io.registers.read.r1.rd := branchInstruction(19,15)
+                        branchTarget := ((r1Value.asSInt() + branchInstruction(31,20).asSInt()).asUInt() >> 2)
+                        branchRd := branchInstruction(11,7)
+                    } .otherwise { // Branch
+                        branchTarget := (pc.asSInt() + (Cat(branchInstruction(31), branchInstruction(7), branchInstruction(30, 25), branchInstruction(11, 8), false.B) >> 2).asSInt()).asUInt()
+                        io.registers.read.r1.rd := branchInstruction(19, 15)
+                        io.registers.read.r2.rd := branchInstruction(24, 20)
+                        switch(branchInstruction(14, 12)) {
+                            is("b000".U) { // BEQ
+                                branchTaken := r1Value === r2Value
+                            }
+                            is("b001".U) { // BNE
+                                branchTaken := r1Value =/= r2Value
+                            }
+                            is("b100".U) { // BLT
+                                branchTaken := r1Signed < r2Signed
+                            }
+                            is("b101".U) { // BGE
+                                branchTaken := r1Signed >= r2Signed
+                            }
+                            is("b110".U) { // BLTU
+                                branchTaken := r1Value < r2Value
+                            }
+                            is("b111".U) { // BGEU
+                                branchTaken := r1Value >= r2Value
+                            }
+                        }
                     }
-                    is("b001".U) { // BNE
-                        branchTaken := r1Value =/= r2Value
+                    when(branchTaken) {
+                        pcOut := branchTarget
+                        val pcNext = (pcOut + 1.U)(11,0)
+                        // TODO fine for B-type?
+                        branchAddInstruction := Cat(pcNext, "b00000".U, "b000".U, branchRd, "b0010011".U)
+                        when(isBranch1) {
+                            instruction1 := branchAddInstruction
+                            instruction2 := nop
+                        } .otherwise {
+                            instruction1 := branchNeighbourInstruction
+                            instruction2 := branchAddInstruction
+                        }
+                    } .otherwise {  // only applicable for B not for J type, thus branchAddInstruction not used
+                        when(pc >= 125.U) { // instruction memory size
+                            pcOut := pc
+                        }.otherwise {
+                            pcOut := pc + 2.U
+                        }
+                        when(isBranch1) {
+                            instruction1 := nop
+                            instruction2 := branchNeighbourInstruction
+                        } .otherwise {
+                            instruction1 := branchNeighbourInstruction
+                            instruction2 := nop
+                        }
                     }
-                    is("b100".U) { // BLT
-                        branchTaken := r1Signed < r2Signed
-                    }
-                    is("b101".U) { // BGE
-                        branchTaken := r1Signed >= r2Signed
-                    }
-                    is("b110".U) { // BLTU
-                        branchTaken := r1Value < r2Value
-                    }
-                    is("b111".U) { // BGEU
-                        branchTaken := r1Value >= r2Value
-                    }
+
                 }
             }
 
-            when(branchTaken) {
-                pcOut := branchTarget
-                val pcNext = (pcOut + 1.U)(11,0)
-                // TODO fine for B-type?
-                branchAddInstruction := Cat(pcNext, "b00000".U, "b000".U, branchRd, "b0010011".U)
-                when(isBranch1) {
-                    instruction1 := branchAddInstruction
-                    instruction2 := nop
-                } .otherwise {
-                    instruction1 := branchNeighbourInstruction
-                    instruction2 := branchAddInstruction
-                }
-            } .otherwise {  // TODO only applicable for B not for J type, thus branchAddInstruction not used
-                when(pc === 126.U) { // instruction memory size
-                    pcOut := pc
-                }.otherwise {
-                    pcOut := pc + 2.U
-                }
-                when(isBranch1) {
-                    instruction1 := nop
-                    instruction2 := branchNeighbourInstruction
-                } .otherwise {
-                    instruction1 := branchNeighbourInstruction
-                    instruction2 := nop
-                }
-            }
+
         }  .otherwise {
-            when(pc === 126.U) { // instruction memory size
+            stallingPipeline := stallingPipeline
+            when(pc >= 125.U) { // instruction memory size
                 pcOut := pc
             }.otherwise {
                 pcOut := pc + 2.U
             }
         }
+    } .otherwise {
+        pcOut := pc
+        instruction1 := nop
+        instruction2 := nop
+        stallingPipeline := stallingPipeline
     }
 
     io.IMem.port1.address := pc1

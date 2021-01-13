@@ -15,11 +15,11 @@ class AluTester(dut: Alu) extends PeekPokeTester(dut) {
             op match {
                 case 0 => 0
                 case 1 => a << b
-                case 2 => a >>> b // TODO
+                case 2 => a >>> b
                 case 3 => a >> b
                 case 4 => a + b
                 case 5 => a - b
-                case 6 => if(a < b) 1 else 0  // TODO
+                case 6 => if(a < b) 1 else 0
                 case 7 => if(a < b) 1 else 0
                 case 8 => a | b
                 case 9 => a ^ b

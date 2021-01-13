@@ -35,6 +35,7 @@ class LittleRiscy extends Module {
     dispatcher.io.instructionsValid := instructionQueue.io.deq.valid
     dispatcher.io.regPortAlu <> registers.io.portAlu.read
     dispatcher.io.regPortLoadStore <> registers.io.portLoadStore.read
+    fetchUnit.io.pipelineFlushed := dispatcher.io.pipelineFlushed
 
     // ALU
     val alu = Module(new Alu())
