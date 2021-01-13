@@ -16,9 +16,11 @@ class InstructionMemory extends Module {
     val fileName = "test_sw/instructions_loop.txt"
     val bufferedSource = scala.io.Source.fromFile(fileName)
     var i = 0
-    for (lines <- bufferedSource.getLines()) {
-        mem(i) := ("h".concat(lines)).U
+    for (line <- bufferedSource.getLines()) {
+        val instruction : String = "h".concat(line.replaceAll(" ", "").substring(6, 13))
+        mem(i) := instruction.U
         i = i + 1
+        // println(instruction)
     }
     bufferedSource.close()
 
