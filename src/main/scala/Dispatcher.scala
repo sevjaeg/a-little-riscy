@@ -20,9 +20,9 @@ class Dispatcher extends Module {
 
     // Instructions from queue
     val valid = io.instructionsValid
-    val pc1 = io.instructions(127,96)
-    val instruction1 = io.instructions(95,64)
-    val pc2 = io.instructions(63,32)
+    val pc1 = io.instructions(95,64)
+    val instruction1 = io.instructions(63,32)
+    val pc2 = pc1 + 1.U
     val instruction2 = io.instructions(31,0)
 
     // Instructions after function unit mapping

@@ -81,7 +81,6 @@ class FetchUnit extends Module {
     }
 
     // TODO validate
-    // TODO Stall everything until reg value available
     when(queueReady) {
         when(isBranch) {
             when(!stallingPipeline) {  // new branch -> stall dispatching
@@ -179,6 +178,6 @@ class FetchUnit extends Module {
     io.IMem.port2.address := pc2
     io.pcOut := pcOut
 
-    io.queue.bits := Cat(pc1, instruction1, pc2, instruction2)
+    io.queue.bits := Cat(pc1, instruction1, instruction2)
     io.queue.valid := true.B
 }

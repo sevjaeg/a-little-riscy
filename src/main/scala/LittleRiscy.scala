@@ -7,6 +7,8 @@ import chisel3.util._
 
 class LittleRiscy extends Module {
     val io = IO(new Bundle {
+        val sw = Input(UInt(16.W))
+        val led = Output(UInt(16.W))
     })
 
     // Registers
@@ -25,7 +27,7 @@ class LittleRiscy extends Module {
     registers.io.newPc := fetchUnit.io.pcOut
 
     // Instruction Queue
-    val instructionQueue = Module(new RegFifo(UInt(128.W), 6))
+    val instructionQueue = Module(new RegFifo(UInt(96.W), 4))
     fetchUnit.io.queue <> instructionQueue.io.enq
 
     // Dispatcher
@@ -57,6 +59,9 @@ class LittleRiscy extends Module {
     registers.io.portAlu.write.value := alu.io.out.value
     registers.io.portLoadStore.write.rd := loadStore.io.out.rd
     registers.io.portLoadStore.write.value := loadStore.io.out.value
+
+    // Debug LED, necessary for FPGA evaluation
+    io.led := alu.io.out.value(15,0)
 }
 
 /**

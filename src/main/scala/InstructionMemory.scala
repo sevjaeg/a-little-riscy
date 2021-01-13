@@ -5,8 +5,6 @@
 import chisel3._
 import chisel3.util._
 
-// First instruction is always 0!
-
 class InstructionMemory extends Module {
     val I_MEM_SIZE = 128
     val io = IO(new IMemIO)
