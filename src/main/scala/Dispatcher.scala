@@ -15,6 +15,7 @@ class Dispatcher extends Module {
         val loadStoreOut = Flipped(new LoadStoreInDispatcherIO())
         val regPortAlu = Flipped(new RegisterDualReadIO())
         val regPortLoadStore = Flipped(new RegisterDualReadIO())
+        val pipelineFlushed = Output(Bool())
     })
 
     // Instructions from queue
@@ -223,7 +224,6 @@ class Dispatcher extends Module {
     val disableLoadStore = WireDefault(false.B)
     val disableAlu = WireDefault(false.B)
 
-    // TODO check
     when(aluBeforeLoadStore) {
         when(aluRdAddress =/= 0.U) {
             when(lsR1Address === aluRdAddress || lsR2Address === aluRdAddress) {
@@ -273,6 +273,15 @@ class Dispatcher extends Module {
         }
     }
 
+    // Pipeline Flushed? *********************************************************************************
+
+    val isNop = isNop1 & isNop2
+    val wasNop = RegInit(false.B)
+    wasNop := isNop
+    val wasWasNop = RegInit(false.B)
+    wasWasNop := wasNop
+
+    io.pipelineFlushed := isNop & wasNop & wasWasNop
 
     // Pipelining Registers *********************************************************************************
 
