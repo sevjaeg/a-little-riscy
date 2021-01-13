@@ -26,14 +26,10 @@ class Dispatcher extends Module {
 
     // Instructions after function unit mapping
     val nop = 0.U(32.W)
-    val instructionAlu = Wire(UInt(32.W))
-    val pcAlu = Wire(UInt(32.W))
-    val instructionLoadStore = Wire(UInt(32.W))
-    val pcLoadStore = Wire(UInt(32.W))
-    instructionAlu := nop
-    pcAlu := nop
-    instructionLoadStore := nop
-    pcLoadStore := nop
+    val instructionAlu = WireDefault(0.U(32.W))
+    val pcAlu = WireDefault(0.U(32.W))
+    val instructionLoadStore = WireDefault(0.U(32.W))
+    val pcLoadStore = WireDefault(0.U(32.W))
 
     // Pipelining Registers
     val aluFunctionRegister = RegInit(0.U(4.W))
@@ -54,36 +50,25 @@ class Dispatcher extends Module {
     val lsIn2SelectRegister = RegInit(0.U(2.W))
 
     // Handling of structural hazards
-    val stallAlu = Wire(Bool())
-    val stallLoadStore = Wire(Bool())
+    val stallAlu = WireDefault(false.B)
+    val stallLoadStore = WireDefault(false.B)
     val aluStallRegister = RegInit(0.U(65.W))  // holds stalled bit, pc, instruction
     val loadStoreStallRegister = RegInit(0.U(65.W)) // holds stalled bit, pc, instruction
-    stallAlu := false.B
-    stallLoadStore := false.B
     aluStallRegister := 0.U
     loadStoreStallRegister := 0.U
 
     // Handling of data hazards
     val lastAluRd = aluRdAddressRegister
     val lastLoadStoreRd = lsRdAddressRegister
-    val aluBeforeLoadStore = Wire(Bool())
-    val forwardAluR1Alu = Wire(Bool())
-    val forwardAluR2Alu = Wire(Bool())
-    val forwardLsuAddressAlu = Wire(Bool())
-    val forwardLsuValueAlu = Wire(Bool())
-    val forwardAluR1Lsu = Wire(Bool())
-    val forwardAluR2Lsu = Wire(Bool())
-    val forwardLsuAddressLsu = Wire(Bool())
-    val forwardLsuValueLsu = Wire(Bool())
-    aluBeforeLoadStore := false.B
-    forwardAluR1Alu := false.B
-    forwardAluR2Alu := false.B
-    forwardLsuAddressAlu := false.B
-    forwardLsuValueAlu := false.B
-    forwardAluR1Lsu := false.B
-    forwardAluR2Lsu := false.B
-    forwardLsuAddressLsu := false.B
-    forwardLsuValueLsu := false.B
+    val aluBeforeLoadStore = WireDefault(false.B)
+    val forwardAluR1Alu = WireDefault(false.B)
+    val forwardAluR2Alu = WireDefault(false.B)
+    val forwardLsuAddressAlu = WireDefault(false.B)
+    val forwardLsuValueAlu = WireDefault(false.B)
+    val forwardAluR1Lsu = WireDefault(false.B)
+    val forwardAluR2Lsu = WireDefault(false.B)
+    val forwardLsuAddressLsu = WireDefault(false.B)
+    val forwardLsuValueLsu = WireDefault(false.B)
 
     // Function unit mapping and handling of structural hazards ********************************************************
     // FENCE, ECALL, EBREAK treated as NOP
@@ -157,20 +142,13 @@ class Dispatcher extends Module {
     val bitsImmAlu = instructionAlu(31, 25)
 
     // Intermediate Signals (ALU)
-    val aluFunction = Wire(UInt(4.W))
-    val aluRdAddress = Wire(UInt(5.W))
-    val aluR1Address = Wire(UInt(5.W))
-    val aluR2Address = Wire(UInt(5.W))
-    val aluHasImmediate = Wire(UInt(1.W))
-    val aluIsAUIPC = Wire(UInt(1.W))
-    val aluImmediate = Wire(UInt(20.W))
-    aluFunction := 0.U
-    aluRdAddress := 0.U
-    aluR1Address := 0.U
-    aluR2Address := 0.U
-    aluHasImmediate := false.B
-    aluIsAUIPC := false.B
-    aluImmediate := 0.U
+    val aluFunction = WireDefault(0.U(4.W))
+    val aluRdAddress = WireDefault(0.U(5.W))
+    val aluR1Address = WireDefault(0.U(5.W))
+    val aluR2Address = WireDefault(0.U(5.W))
+    val aluHasImmediate = WireDefault(false.B)
+    val aluIsAUIPC = WireDefault(false.B)
+    val aluImmediate = WireDefault(0.U(20.W))
 
     switch(bitsOpCodeAlu) {
         is("b0110011".U) { // ALU
@@ -217,20 +195,13 @@ class Dispatcher extends Module {
     val bitsR2LoadStore = instructionLoadStore(24, 20)
     val bitsImmLoadStore = instructionLoadStore(31, 25)
 
-    val lsFunction = Wire(UInt(4.W))
-    val lsRdAddress = Wire(UInt(5.W))
-    val lsR1Address = Wire(UInt(5.W))
-    val lsR2Address = Wire(UInt(5.W))
-    val lsAddressBase = Wire(UInt(32.W))
-    val lsOffset = Wire(UInt(12.W))
-    val lsStoreValue = Wire(UInt(32.W))
-    lsFunction := 0.U
-    lsRdAddress := 0.U
-    lsR1Address := 0.U
-    lsR2Address := 0.U
-    lsAddressBase := 0.U
-    lsOffset := 0.U
-    lsStoreValue := 0.U
+    val lsFunction = WireDefault(0.U(4.W))
+    val lsRdAddress = WireDefault(0.U(5.W))
+    val lsR1Address = WireDefault(0.U(5.W))
+    val lsR2Address = WireDefault(0.U(5.W))
+    val lsAddressBase = WireDefault(0.U(32.W))
+    val lsOffset = WireDefault(0.U(12.W))
+    val lsStoreValue = WireDefault(0.U(32.W))
 
     switch(bitsOpCodeLoadStore) {
         is("b0000011".U) { // Load
@@ -249,10 +220,8 @@ class Dispatcher extends Module {
 
     // Handling of Data Hazards ***************************************************************************
 
-    val disableLoadStore = Wire(Bool())
-    val disableAlu = Wire(Bool())
-    disableAlu := false.B
-    disableLoadStore := false.B
+    val disableLoadStore = WireDefault(false.B)
+    val disableAlu = WireDefault(false.B)
 
     // TODO check
     when(aluBeforeLoadStore) {

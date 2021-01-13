@@ -8,43 +8,36 @@ import chisel3.util._
 class LoadStoreUnit extends Module {
     val io = IO(new LoadStoreIO())
 
-    val storeValue = Wire(UInt(32.W))
-    storeValue := 0.U
+    val storeValue = WireDefault(0.U(32.W))
     switch(io.in.valueSelect) {
-        is("b00".U) {storeValue := io.in.valueReg}          // Register
+        is("b00".U) {storeValue := io.in.valueReg}        // Register
         is("b10".U) {storeValue := io.inFwd.aluFwd}       // aluForwarding
         is("b11".U) {storeValue := io.inFwd.lsuFwd}       // lsuForwarding
-
     }
 
-    val addressBase = Wire(UInt(32.W))
-    addressBase := 0.U
+    val addressBase = WireDefault(0.U(32.W))
     switch(io.in.addressBaseSelect) {
-        is("b00".U) {addressBase := io.in.addressBaseReg}    // Register
-        is("b10".U) {addressBase := io.inFwd.aluFwd} // aluForwarding
-        is("b11".U) {addressBase := io.inFwd.lsuFwd} // lsuForwarding
+        is("b00".U) {addressBase := io.in.addressBaseReg} // Register
+        is("b10".U) {addressBase := io.inFwd.aluFwd}      // aluForwarding
+        is("b11".U) {addressBase := io.inFwd.lsuFwd}      // lsuForwarding
     }
 
-    val loadedValue = Wire(UInt(32.W))
-    val writeEnable = Wire(Bool())
-    val dataOut = Wire(UInt(32.W))
+    val loadedValue = WireDefault(0.U(32.W))
+    val dataOut = WireDefault(0.U(32.W))
+    val writeEnable = WireDefault(false.B)
+
     val writeMask = Wire(Vec(4, Bool()))
+    for (idx <- 0 to 3) {
+        writeMask(idx) := false.B
+    }
 
     val byteAddress = addressBase + io.in.addressOffset
     val wordAddress = (byteAddress >> 2.U).asUInt()
     val remainder = byteAddress(1,0)
 
-    writeEnable := false.B
-    dataOut := 0.U
-    loadedValue := 0.U
-    for (idx <- 0 to 3) {
-        writeMask(idx) := false.B
-    }
-
     switch(io.in.function) {
         is("b1000".U) { // Load Byte Signed
-            val readByte = Wire(Bits(8.W))
-            readByte := 0.U
+            val readByte = WireDefault(0.U(8.W))
             for (rem <- 0 to 3) {
                 when(remainder === rem.U) {
                     readByte := (io.memory.dataOut >> (rem * 8).U)(7, 0)
@@ -55,8 +48,7 @@ class LoadStoreUnit extends Module {
             loadedValue := byteExtended.asUInt()
         }
         is("b1001".U) { // Load Halfword Signed
-            val readBytes = Wire(Bits(16.W))
-            readBytes := 0.U
+            val readBytes = WireDefault(0.U(16.W))
             when(remainder === 0.U) {
                 readBytes := io.memory.dataOut(15, 0)
             } .elsewhen(remainder === 2.U) {
@@ -70,8 +62,7 @@ class LoadStoreUnit extends Module {
             loadedValue := io.memory.dataOut
         }
         is("b1100".U) { // Load Byte Unsigned
-            val readByte = Wire(Bits(8.W))
-            readByte := 0.U
+            val readByte = WireDefault(0.U(8.W))
             for (rem <- 0 to 3) {
                 when(remainder === rem.U) {
                     readByte := (io.memory.dataOut >> (rem * 8).U)(7, 0)
@@ -80,8 +71,7 @@ class LoadStoreUnit extends Module {
             loadedValue := Cat(0.U(24.W), readByte)
         }
         is("b1101".U) { // Load Halfword Unsigned
-            val readBytes = Wire(Bits(16.W))
-            readBytes := 0.U
+            val readBytes = WireDefault(0.U(16.W))
             when(remainder === 0.U) {
                 readBytes := io.memory.dataOut(15, 0)
             } .elsewhen(remainder === 2.U) {
