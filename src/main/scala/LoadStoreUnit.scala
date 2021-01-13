@@ -12,8 +12,8 @@ class LoadStoreUnit extends Module {
     storeValue := 0.U
     switch(io.in.valueSelect) {
         is("b00".U) {storeValue := io.in.valueReg}          // Register
-        is("b10".U) {storeValue := io.in.valueAluFwd}       // aluForwarding
-        is("b11".U) {storeValue := io.in.valueLsuFwd}       // lsuForwarding
+        is("b10".U) {storeValue := io.inFwd.aluFwd}       // aluForwarding
+        is("b11".U) {storeValue := io.inFwd.lsuFwd}       // lsuForwarding
 
     }
 
@@ -21,8 +21,8 @@ class LoadStoreUnit extends Module {
     addressBase := 0.U
     switch(io.in.addressBaseSelect) {
         is("b00".U) {addressBase := io.in.addressBaseReg}    // Register
-        is("b10".U) {addressBase := io.in.addressBaseAluFwd} // aluForwarding
-        is("b11".U) {addressBase := io.in.addressBaseLsuFwd} // lsuForwarding
+        is("b10".U) {addressBase := io.inFwd.aluFwd} // aluForwarding
+        is("b11".U) {addressBase := io.inFwd.lsuFwd} // lsuForwarding
     }
 
     val loadedValue = Wire(UInt(32.W))
@@ -146,10 +146,8 @@ class LoadStoreInDispatcherIO() extends Bundle {
 }
 
 class LoadStoreInForwardingIO() extends Bundle {
-    val addressBaseAluFwd = Input(UInt(32.W))
-    val addressBaseLsuFwd = Input(UInt(32.W))
-    val valueAluFwd = Input(UInt(32.W))
-    val valueLsuFwd = Input(UInt(32.W))
+    val aluFwd = Input(UInt(32.W))
+    val lsuFwd = Input(UInt(32.W))
 }
 
 class LoadStoreOutIO() extends Bundle {
@@ -170,7 +168,8 @@ class LoadStoreIO() extends Bundle {
 
 class MemSys extends Module {
     val io = IO(new Bundle {
-        val in = new LoadStoreInIO()
+        val in = new LoadStoreInDispatcherIO()
+        val inFwd = new LoadStoreInForwardingIO()
         val out = new LoadStoreOutIO()
     })
 

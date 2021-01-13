@@ -128,7 +128,7 @@ class FetchUnit extends Module {
                     instruction2 := branchAddInstruction
                 }
             } .otherwise {  // TODO only applicable for B not for J type, thus branchAddInstruction not used
-                when(pc > 127.U) { // instruction memory size
+                when(pc === 126.U) { // instruction memory size
                     pcOut := pc
                 }.otherwise {
                     pcOut := pc + 2.U
@@ -142,7 +142,7 @@ class FetchUnit extends Module {
                 }
             }
         }  .otherwise {
-            when(pc > 127.U) { // instruction memory size
+            when(pc === 126.U) { // instruction memory size
                 pcOut := pc
             }.otherwise {
                 pcOut := pc + 2.U
