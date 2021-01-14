@@ -136,6 +136,27 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 
 %# TODO FPGA evaluation, resource consumption
 An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used for evaluation.
+\begin{table} [h]
+	\caption{Resource consumption of the different units on the target FPGA}
+	\centering
+	\begin{tabular}{l c c c}
+			Entity & LUTs & Registers & Logic Cells \\
+		\midrule
+			ALU & 2090 & 37 & 2127 \\
+			Dispatcher & 405 & 187 & 592 \\
+			Fetch Unit & 470 & 1 & 471 \\
+			Instruction Memory & 139 & 0 & 139 \\
+			Load/Store Unit & 1026 & 37 & 1095 \\
+			Data Memory & 2433 & 8192 & 10625 \\
+			Instruction Queue & 12 & 342 & 354 \\
+			Register & 1114 & 1024 & 2138 \\
+		\midrule
+			Total & 7689 & 9820 & 17509 \\
+	\end{tabular}
+	
+	
+	\label{tab:results}
+\end{table}
 
 \section{Conclusion and Outlook}
 

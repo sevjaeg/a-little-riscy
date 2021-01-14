@@ -7,7 +7,6 @@ import chisel3.util._
 
 class LittleRiscy extends Module {
     val io = IO(new Bundle {
-        val sw = Input(UInt(16.W))
         val led = Output(UInt(16.W))
     })
 

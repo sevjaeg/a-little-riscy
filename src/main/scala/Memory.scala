@@ -14,6 +14,7 @@ class Memory extends Module {
         mem(idx) = Mem(256, UInt(8.W))  // 8 bit address, so 2^8 entries
     }
 
+    // TODO improve efficiency (cf. Registers)
     when(io.write) {
         for (idx <- 0 to 3) {
             when(io.writeMask(idx)) {

@@ -20,7 +20,8 @@ class Registers extends Module {
     // New values
     registers(0) := 0.U
     pc := io.newPc
-    
+
+    // TODO increase efficiency by not comparing in parallel but using addressing
     for(i <- 1 to 31) {
         when(io.portAlu.write.rd === i.U) {
             registers(i) := io.portAlu.write.value
