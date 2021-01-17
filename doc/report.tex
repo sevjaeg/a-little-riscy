@@ -15,7 +15,7 @@
 \usepackage{listings}
 \usepackage{enumerate}
 \usepackage{booktabs}  % nicer tables (e.g. \toprule)
-\usepackage{verbatim}
+\usepackage{verbatim}  % inline code (\verb||)
 \usepackage[european, siunitx, RPvoltages]{circuitikz}  % draw circuit diagrams
 \usepackage{enumitem}
 \setlist[itemize]{label=\rule[0.5ex]{0.6ex}{0.6ex}} % black squares for itemize
@@ -46,7 +46,14 @@
 \AtBeginEnvironment{appendices}{\crefalias{section}{appendix}} % Appendix referencing (for cref "Appendix A" instead of "Section A")
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
-    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+	T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+	
+	\lstdefinestyle{mystyle}{                
+    captionpos=b,             
+    tabsize=4
+}
+
+\lstset{style=mystyle}
 
 \begin{document}
 
@@ -81,7 +88,7 @@ Due to the limited scope of this project, several instruction level parallelism 
 
 This report covers the implemented architecture of the processor in Section~\ref{sec:implementation}, some evaluation results in Section~\ref{sec:eval} and a discussion of the design including potential improvements in Section~\ref{sec:conclusion}.
 
-\begin{figure} [ht]
+\begin{figure}[h]
 	\centering
 	\includegraphics[width=7.8cm]{basic_architecture.PNG}
 	\caption{Basic structure of the implemented processor \cite{Hamacher}}
@@ -89,7 +96,6 @@ This report covers the implemented architecture of the processor in Section~\ref
 \end{figure}
 
 \section{Implementation} \label{sec:implementation}
-
 The implemented processor follows the architecture depicted in Figure~\ref{fig:basic_arch}. Thus, it features a Harvard architecture with a four stage pipeline (Fetch, Dispatch, Execute, Write Back) with an ALU and a load/store unit in parallel in the execution stage. In order to utilise the parallel execution units, two instructions per cycle are fetched, enqueued, dequeued and dispatched respectively. The whole design was implemented using the \emph{Chisel} hardware description language.
 
 As the evaluation of the processor was conducted with rather simple single-threaded programs (cf. Section~\ref{sec:eval}), the following instructions were not implemented and thus interpreted as NOP: FENCE, ECALL, EBREAK. Otherwise, \emph{A Little Riscy} is except for some memory limitations (cf. Section~\ref{sec:memory}) compliant with the RV32I instruction set.
@@ -119,6 +125,13 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 
 \subsection{Dispatcher} \label{sec:dispatch}
 
+%# TODO figure Dispatcher (high level)
+\begin{figure}
+	\centering
+	\includegraphics[width=5cm]{dispatcher.png}
+	\caption{High-level schematic of the implemented dispatcher}
+	\label{fig:dispatcher}
+\end{figure}
 
 The dispatcher dequeues two instructions and issues them to the execution units (ALU and Load/Store). It is of utmost importance, that structural and data hazards are resolved beforehand. This is done by the means of operand forwarding and stalling of conflicting instructions.
 
@@ -130,43 +143,60 @@ However, in case instructions decoded during the same cycle impose some ordering
 
 In principle, all aforementioned hazards can be resolved by implementing an dynamic scheduling approach like Tomasulo´s algorithm. However, this is not suitable for the chosen architecture. This is due to the common data bus, which broadcasts the results of all calculations to the reservation stations and the register bank. This bus need some arbitration policy to prevent two execution units from broadcasting their results simultaneously. However, in the case of \emph{A Little Riscy} both execution units generate one result per cycle respectively\footnote{This is not the case for floating point units, where individual instructions usually take multiple cycles.}. Thus, the bandwidth of the basic single-word bus is not sufficient. This leads to a major bottleneck for the whole pipeline.
 
-
-
-
 %#TODO two word CDB?
 
-%# TODO discuss theoretical performance (somewhere)
-
-%# TODO figure Dispatcher (high level)
-
-\begin{figure}
-	\centering
-	\includegraphics[width=7.8cm]{basic_architecture.PNG}
-	\caption{}
-	\label{fig:dispatcher}
-\end{figure}
 
 \subsection{Arithmetic Logic Unit}
-
 This execution unit implements all instructions listed in Section~$2.4$ of the RISC-V Specification~\cite{risc-v}. The LUI and the AUIPC instruction as well as the operand forwarding described in Section~\ref{sec:dispatch} require a dynamic allocation of the operands. This is achieved by the means of multiplexers with select signals created by the dispatcher. This is depicted in Figure~\ref{fig:alu}.
 
 \begin{figure}
 	\centering
-	\includegraphics[width=6cm]{alu_mux.png}
+	\includegraphics[width=7cm]{alu_mux.png}
 	\caption{ALU with input multiplexers for operand forwarding}
 	\label{fig:alu}
 \end{figure}
 
 \subsection{Load/Store Unit} \label{sec:load_store}
+The load/store unit handles all accesses to the data memory. It implements all respective instructions in the RV32I instruction set, the only limitations are discussed in the next section. Similar to the ALU, its inputs feature multiplexers to allow for the use of forwarded values.
 
 \subsection{Memory System} \label{sec:memory}
+As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory holds $128$ word (and thus instructions) and is only word addressable. Due to their small size, both can be implemented as registers. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words.
 
-%#TODO max pls check
-As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory holds $128$ word (and thus instructions) and is only word addressable. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words.
+\subsection{Performance Considerations} \label{sec:performance}
+From the previous sections, the following statements about the theoretically achievable performance can be made:
+\begin{itemize}
+	\item As the data memory is implemented as register, there is no memory delay, so load/store instructions take as long as ALU instructions.
+	\item In the absence of pipelining hazards, two instructions per cycle can be executed, thus a IPC of $2$ is the upper bound for this processor.
+	\item Instructions with data hazards can be executed without any additional delay as long as they are not fetched simultaneously.
+	\item Branching requires flushing the pipeline and thus introduces significant idle time.
+	\item The instruction queue adds latency to the pipeline, this is unfavourable in the beginning and during branches.
+\end{itemize}
+
+Thus, efficient code for \emph{A Little Riscy} consist of interleaved load/store and ALU instructions and minimises the number of control flow transfer instructions. The following section investigates these observations empirically.
 
 \section{Evaluation} \label{sec:eval}
 
 \subsection{Benchmarks}
+
+In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. The only modifications made to the resulting instructions were replacing the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory by simpler load immediate instructions.
+ 
+\begin{lstlisting}[language=C, caption=Code for the loop benchmark]
+	int N = 4;
+	int main() {
+		int n = N;
+		int a[5] = {};
+
+		int i = 0;
+		for(;i<n;i++) {
+			a[i] = i+1;
+		}
+		int r = 0;
+		for(i=0;i<n;i++) {
+			r += a[i];
+		}
+		return r;
+	}
+\end{lstlisting}
 
 %#TODO used test code (in C)
 
@@ -174,16 +204,20 @@ As \emph{A Little Riscy} implements a Harvard architecture, instruction and data
 
 %# TODO results in tabular form
 
-\begin{table}
-	\caption{}
+
+Table~\ref{tab:results}
+
+\begin{table} [h]
+	\caption{Benchmarking results}
 	\centering
-	\begin{tabular}{l c}
-			Benchmark & IPC \\
+	\begin{tabular}{l c c c}
+			Benchmark & Instructions & Cycles & IPC \\
 		\midrule
-			x & y\\
+			ALU & & & \\
+			Loop & & & \\
+			Loop Unrolled & & & \\
+			Mix & & & 
 	\end{tabular}
-	
-	
 	\label{tab:results}
 \end{table}
 
@@ -192,9 +226,10 @@ As \emph{A Little Riscy} implements a Harvard architecture, instruction and data
 
 \subsection{FPGA Evaluation}
 
-An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Figure~\ref{tab:resources}. %#TODO discussion
+An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Table~\ref{tab:resources}. %#TODO discussion
 
-The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers). %# TODO how to improve?
+The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers through the data hazard handling circuitry, s. Figure~\ref{fig:dispatcher}). %# TODO how to improve?
+
 \begin{table}
 	\caption{Resource consumption of the different units on the target FPGA}
 	\centering
