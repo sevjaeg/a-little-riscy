@@ -55,6 +55,8 @@
 
 \lstset{style=mystyle}
 
+\pagenumbering{arabic}
+
 \begin{document}
 
 \title{A Little Riscy: Implementation of a Simple Superscalar RISC-V Processor\\
@@ -114,7 +116,7 @@ The latter can in principle be mitigated using branch prediction and speculative
 In case a jump or branch instruction is dequeued, the fetch unit performs the following steps.
 \begin{itemize}
 	\item Stall the pipeline (by scheduling NOPs)\footnote{The instruction loaded from the instruction memory is still dispatched in case its PC is lower than the one of the branch instruction.}.
-	\item Wait for the dispatcher to report a flushed pipeline (i.e. all register values are written).
+	\item Wait for the dispatcher to report an empty pipeline (i.e. all register values are written).
 	\item Decode the branch instruction, calculate the target and determine whether the branch is taken.
 	\item Enqueue an ADDI instruction writing the address of the instruction after the jump (only applicable for jumps).
 	\item Continue with regular fetch operation.
@@ -159,6 +161,9 @@ This execution unit implements all instructions listed in Section~$2.4$ of the R
 \subsection{Load/Store Unit} \label{sec:load_store}
 The load/store unit handles all accesses to the data memory. It implements all respective instructions in the RV32I instruction set, the only limitations are discussed in the next section. Similar to the ALU, its inputs feature multiplexers to allow for the use of forwarded values.
 
+\subsection{Registers} \label{sec:registers}
+The register bank consists in compliance with the RISC-V reference manual out of 32 general purpose registers (x0 is always set to zero) and the program counter. The architecture demands six read ports (two for the ALU, two for the load/store unit and two for the fetch unit) and two write ports (one for ALU and load/store unit respectively).
+
 \subsection{Memory System} \label{sec:memory}
 As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory holds $128$ word (and thus instructions) and is only word addressable. Due to their small size, both can be implemented as registers. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words.
 
@@ -180,7 +185,10 @@ Thus, efficient code for \emph{A Little Riscy} consist of interleaved load/store
 
 In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. The only modifications made to the resulting instructions were replacing the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory by simpler load immediate instructions.
  
-\begin{lstlisting}[language=C, caption=Code for the loop benchmark]
+%#TODO first?
+The code for the first benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one adding \verb|i+1| to elements of an array and the second one summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
+
+\begin{lstlisting}[language=C, caption=Code for the loop benchmark, label=code:loop]
 	int N = 4;
 	int main() {
 		int n = N;
@@ -214,7 +222,7 @@ Table~\ref{tab:results}
 			Benchmark & Instructions & Cycles & IPC \\
 		\midrule
 			ALU & & & \\
-			Loop & & & \\
+			Loop & 45 & 99 & 0.45 \\
 			Loop Unrolled & & & \\
 			Mix & & & 
 	\end{tabular}
@@ -228,7 +236,9 @@ Table~\ref{tab:results}
 
 An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Table~\ref{tab:resources}. %#TODO discussion
 
-The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers through the data hazard handling circuitry, s. Figure~\ref{fig:dispatcher}). %# TODO how to improve?
+The high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
+
+The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). %# TODO how to improve?
 
 \begin{table}
 	\caption{Resource consumption of the different units on the target FPGA}
@@ -237,15 +247,15 @@ The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path ru
 			Entity & LUTs & Registers & Logic Cells \\
 		\midrule
 			ALU & 1951 & 37 & 1988 \\
-			Dispatcher & 392 & 188 & 580 \\
-			Fetch Unit & 517 & 2 & 572 \\
-			Instruction Memory & 130 & 0 & 130 \\
-			Load/Store Unit & 1017 & 69 & 1086 \\
-			Data Memory & 2433 & 8192 & 10625 \\
+			Dispatcher & 355 & 190 & 545 \\
+			Fetch Unit & 516 & 55 & 571 \\
+			Instruction Memory & 121 & 0 & 130 \\
+			Load/Store Unit & 1016 & 69 & 1085 \\
+			Data Memory & 2431 & 8192 & 10622 \\
 			Instruction Queue & 12 & 342 & 354 \\
-			Register & 811 & 1056 & 1867 \\
+			Register & 809 & 1056 & 1865 \\
 		\midrule
-			Total & 7263 & 9854 & 17117 \\
+			Total & 7211 & 9856 & 17067 \\
 	\end{tabular}
 	\label{tab:resources}
 \end{table}
