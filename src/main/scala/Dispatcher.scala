@@ -53,10 +53,14 @@ class Dispatcher extends Module {
     // Handling of structural hazards
     val stallAlu = WireDefault(false.B)
     val stallLoadStore = WireDefault(false.B)
-    val aluStallRegister = RegInit(0.U(65.W))  // holds stalled bit, pc, instruction
-    val loadStoreStallRegister = RegInit(0.U(65.W)) // holds stalled bit, pc, instruction
+    val aluStallRegister = RegInit(0.U(64.W))  // holds pc, instruction
+    val loadStoreStallRegister = RegInit(0.U(64.W)) // holds pc, instruction
+    val wasAluStalled = RegInit(false.B)
+    val wasLoadStoreStalled = RegInit(false.B)
     aluStallRegister := 0.U
     loadStoreStallRegister := 0.U
+    wasAluStalled := false.B
+    wasLoadStoreStalled := false.B
 
     // Handling of data hazards
     val lastAluRd = aluRdAddressRegister
@@ -80,59 +84,61 @@ class Dispatcher extends Module {
     val isAlu2 = instruction2(4, 0) === "b10011".U & instruction2(6) === false.B | instruction2(3,0) === "b0111".U
     val isLoadStore2 = instruction2(4, 0) === "b00011".U & instruction2(6) === false.B
 
-    val stalledLastCycle = loadStoreStallRegister(64) | aluStallRegister(64)
+    val stalledLastCycle = wasAluStalled | wasLoadStoreStalled
     when(!stalledLastCycle) {
         when((isNop1 & isLoadStore2) | (isAlu1 & isNop2) | (isNop1 & isNop2) | (isAlu1 & isLoadStore2)) {
+            // first alu, then load store
             when((!(instruction1(11,7) === 0.U)) & (instruction1(11,7) === instruction2(11,7))) {
                 // same destination register (not x0)-> stall Load/Store
                 stallLoadStore := true.B
-                loadStoreStallRegister := Cat(true.B, pc2, instruction2)
             } .otherwise {
                 instructionLoadStore := instruction2
                 pcLoadStore := pc2
             }
             instructionAlu := instruction1
             pcAlu := pc1
-            instructionLoadStore := instruction2
-            pcLoadStore := pc2
             aluBeforeLoadStore := true.B
-        }.elsewhen((isAlu2 & isLoadStore1) | (isNop2 & isLoadStore1) | (isAlu2 & isNop1)) {
-            instructionLoadStore := instruction1
-            pcLoadStore := pc1
+            aluStallRegister := Cat(pc1, instruction1)
+            loadStoreStallRegister := Cat(pc2, instruction2)
+        } .elsewhen((isAlu2 & isLoadStore1) | (isNop2 & isLoadStore1) | (isAlu2 & isNop1)) {
+            // first load store, then alu
             when((!(instruction1(11,7) === 0.U)) & (instruction1(11,7) === instruction2(11,7))) {
                 // same destination register (not x0) -> stall Alu
                 stallAlu := true.B
-                aluStallRegister := Cat(true.B, pc2, instruction2)
             } .otherwise {
                 instructionAlu := instruction2
                 pcAlu := pc2
             }
+            instructionLoadStore := instruction1
+            pcLoadStore := pc1
             aluBeforeLoadStore := false.B
-        }.elsewhen(isAlu1 & isAlu2) {
+            aluStallRegister := Cat(pc2, instruction2)
+            loadStoreStallRegister := Cat(pc1, instruction1)
+        } .elsewhen(isAlu1 & isAlu2) {
             instructionAlu := instruction1
             pcAlu := pc1
             stallAlu := true.B
-            aluStallRegister := Cat(true.B, pc2, instruction2)
-        }.elsewhen(isLoadStore1 & isLoadStore2) {
+            aluStallRegister := Cat(pc2, instruction2)
+        } .elsewhen(isLoadStore1 & isLoadStore2) {
             instructionLoadStore := instruction1
             pcLoadStore := pc1
             stallLoadStore := true.B
-            loadStoreStallRegister := Cat(true.B, pc2, instruction2)
+            loadStoreStallRegister := Cat(pc2, instruction2)
         }
-
     } .otherwise {  // currently stalled
-        when(loadStoreStallRegister(64) === true.B) {
+        when(wasLoadStoreStalled === true.B) {
             instructionLoadStore := loadStoreStallRegister(31,0)
             pcLoadStore := loadStoreStallRegister(63,32)
             stallLoadStore := false.B
-            loadStoreStallRegister := 0.U
-        } .elsewhen(aluStallRegister(64) === true.B) {
+        } .elsewhen(wasAluStalled === true.B) {
             instructionAlu := aluStallRegister(31,0)
             pcAlu := aluStallRegister(63,32)
             stallAlu := false.B
-            aluStallRegister := 0.U
         }
     }
+
+    wasAluStalled := stallAlu
+    wasLoadStoreStalled := stallLoadStore
 
     //******* ALU ******************************************************************************************
     val bitsOpCodeAlu = instructionAlu(6, 0)
@@ -280,14 +286,12 @@ class Dispatcher extends Module {
 
 
 
-    // Pipeline Flushed? *********************************************************************************
-
+    // Pipeline Empty? *********************************************************************************
     val isNop = isNop1 & isNop2
     val wasNop = RegInit(false.B)
     wasNop := isNop
     val wasWasNop = RegInit(false.B)
     wasWasNop := wasNop
-
     io.pipelineFlushed := isNop & wasNop & wasWasNop
 
     // Pipelining Registers *********************************************************************************
