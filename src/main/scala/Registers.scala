@@ -22,7 +22,7 @@ class Registers extends Module {
     pc := io.newPc
 
     // TODO increase efficiency by not comparing in parallel but using addressing
-    for(i <- 1 to 31) {
+    /*for(i <- 1 to 31) {
         when(io.portAlu.write.rd === i.U) {
             registers(i) := io.portAlu.write.value
         } .elsewhen (io.portLoadStore.write.rd === i.U) {
@@ -30,7 +30,17 @@ class Registers extends Module {
         } .otherwise {
             registers(i) := registers(i)
         }
+    }*/
+
+    registers := registers
+    when(io.portAlu.write.rd =/= 0.U) {
+        registers(io.portAlu.write.rd) := io.portAlu.write.value
     }
+    when(io.portLoadStore.write.rd =/= 0.U) {
+        registers(io.portLoadStore.write.value) := io.portLoadStore.write.value
+    }
+
+
 
     io.portAlu.read.r1.value := registers(io.portAlu.read.r1.rd)
     io.portAlu.read.r2.value := registers(io.portAlu.read.r2.rd)

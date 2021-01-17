@@ -243,35 +243,42 @@ class Dispatcher extends Module {
     }
 
     // Forward if I1 or I2 depends on one previous
+    val wasDisabledAlu = RegInit(false.B)
+    val wasDisabledLoadStore = RegInit(false.B)
+    wasDisabledLoadStore := disableLoadStore
+    wasDisabledAlu := disableAlu
+
     when(aluR1Address =/= 0.U) {
-        when(aluR1Address === lastAluRd) {
+        when(!wasDisabledAlu & aluR1Address === lastAluRd) {
             forwardAluR1Alu := true.B
-        } .elsewhen(aluR1Address === lastLoadStoreRd) {
+        }.elsewhen(!wasDisabledLoadStore & aluR1Address === lastLoadStoreRd) {
             forwardAluR1Lsu := true.B
         }
     }
     when(aluR2Address =/= 0.U) {
-        when(aluR2Address === lastAluRd) {
+        when(!wasDisabledAlu & aluR2Address === lastAluRd) {
             forwardAluR2Alu := true.B
-        } .elsewhen(aluR2Address === lastLoadStoreRd) {
+        }.elsewhen(!wasDisabledLoadStore & aluR2Address === lastLoadStoreRd) {
             forwardAluR2Lsu := true.B
         }
     }
-
+    
     when(lsR1Address =/= 0.U) {
-        when(lsR1Address === lastAluRd) {
+        when(!wasDisabledAlu & lsR1Address === lastAluRd) {
             forwardLsuAddressAlu := true.B
-        } .elsewhen(lsR1Address === lastLoadStoreRd) {
+        }.elsewhen(!wasDisabledLoadStore & lsR1Address === lastLoadStoreRd) {
             forwardLsuAddressLsu := true.B
         }
     }
     when(lsR2Address =/= 0.U) {
-        when(lsR2Address === lastAluRd) {
+        when(!wasDisabledAlu & lsR2Address === lastAluRd) {
             forwardLsuValueAlu := true.B
-        } .elsewhen(lsR2Address === lastLoadStoreRd) {
+        }.elsewhen(!wasDisabledLoadStore & lsR2Address === lastLoadStoreRd) {
             forwardLsuValueLsu := true.B
         }
     }
+
+
 
     // Pipeline Flushed? *********************************************************************************
 

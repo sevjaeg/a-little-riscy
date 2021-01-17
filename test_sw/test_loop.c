@@ -3,14 +3,15 @@ int inc (int i);
 int N = 4;
 
 int main() {
+	int n = N;
 	int a[5] = {};
 	int i = 0;
-	for(;i<N;i++) {
+	for(;i<n;i++) {
 		a[i] = i+1;
 	}
 	
 	int r = 0;
-	for(i=0;i<N;i++) {
+	for(i=0;i<n;i++) {
 		r += a[i];
 	}
 	return r;

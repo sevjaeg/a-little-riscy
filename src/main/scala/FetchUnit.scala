@@ -65,6 +65,8 @@ class FetchUnit extends Module {
     pcBranch := 0.U
 
     val stallingPipeline = RegInit(false.B)
+    val neighbourScheduled = RegInit(false.B)
+    neighbourScheduled := neighbourScheduled
 
     pc1 := pc
     pc2 := pc + 1.U
@@ -83,8 +85,14 @@ class FetchUnit extends Module {
     // TODO validate
     when(queueReady) {
         when(isBranch) {
-            when(!stallingPipeline) {  // new branch -> stall dispatching
-                instruction1 := nop
+            when(!stallingPipeline) {  // new branch -> stall dispatching (still enqueue the previous instruction!)
+                when(isBranch2){
+                    instruction1 := branchNeighbourInstruction
+                    neighbourScheduled := true.B
+                } .otherwise {
+                    instruction1 := nop
+                }
+
                 instruction2 := nop
                 stallingPipeline := true.B
             } .otherwise {             // dispatching already stalled
@@ -104,7 +112,7 @@ class FetchUnit extends Module {
                         branchTarget := ((r1Value.asSInt() + branchInstruction(31,20).asSInt()).asUInt() >> 2)
                         branchRd := branchInstruction(11,7)
                     } .otherwise { // Branch
-                        branchTarget := (pc.asSInt() + (Cat(branchInstruction(31), branchInstruction(7), branchInstruction(30, 25), branchInstruction(11, 8), false.B) >> 2).asSInt()).asUInt()
+                        branchTarget := (pcBranch.asSInt() + (Cat(branchInstruction(31), branchInstruction(7), branchInstruction(30, 25), branchInstruction(11, 8), false.B) >> 2).asSInt()).asUInt()
                         io.registers.read.r1.rd := branchInstruction(19, 15)
                         io.registers.read.r2.rd := branchInstruction(24, 20)
                         switch(branchInstruction(14, 12)) {
@@ -137,7 +145,13 @@ class FetchUnit extends Module {
                             instruction1 := branchAddInstruction
                             instruction2 := nop
                         } .otherwise {
-                            instruction1 := branchNeighbourInstruction
+                            when(neighbourScheduled) {
+                                instruction1 := nop
+                                neighbourScheduled := false.B
+                            } .otherwise {
+                                instruction1 := branchNeighbourInstruction
+                            }
+
                             instruction2 := branchAddInstruction
                         }
                     } .otherwise {  // only applicable for B not for J type, thus branchAddInstruction not used
@@ -150,7 +164,12 @@ class FetchUnit extends Module {
                             instruction1 := nop
                             instruction2 := branchNeighbourInstruction
                         } .otherwise {
-                            instruction1 := branchNeighbourInstruction
+                            when(neighbourScheduled) {
+                                instruction1 := nop
+                                neighbourScheduled := false.B
+                            } .otherwise {
+                                instruction1 := branchNeighbourInstruction
+                            }
                             instruction2 := nop
                         }
                     }
