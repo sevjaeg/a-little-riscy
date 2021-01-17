@@ -12,3 +12,4 @@
 *.iml
 /doc/build
 test_sw/test
+/doc/.vscode

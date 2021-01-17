@@ -82,7 +82,6 @@ class FetchUnit extends Module {
         pcBranch := pc2
     }
 
-    // TODO validate
     when(queueReady) {
         when(isBranch) {
             when(!stallingPipeline) {  // new branch -> stall dispatching (still enqueue the previous instruction!)

@@ -8,7 +8,7 @@ import chisel3.util._
 
 class Dispatcher extends Module {
     val io = IO(new Bundle {
-        val instructions = Input(UInt(128.W))
+        val instructions = Input(UInt(96.W))
         val instructionsValid = Input(Bool())
         val ready = Output(Bool())
         val aluOut = Flipped(new AluInDispatcherIO())
@@ -262,7 +262,7 @@ class Dispatcher extends Module {
             forwardAluR2Lsu := true.B
         }
     }
-    
+
     when(lsR1Address =/= 0.U) {
         when(!wasDisabledAlu & lsR1Address === lastAluRd) {
             forwardLsuAddressAlu := true.B

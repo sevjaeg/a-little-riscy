@@ -50,8 +50,13 @@
 
 \begin{document}
 
-\title{A Little Riscy: Implementation of a Simple Superscalar RISC-V Processor
+\title{A Little Riscy: Implementation of a Simple Superscalar RISC-V Processor\\
+{
+\thanks{Submitted \today}
 }
+}
+
+\date{\today}
 
 \author{\IEEEauthorblockN{Severin Jäger}
 severin.jaeger@tuwien.ac.at\\
@@ -66,11 +71,11 @@ Mat.Nr. 01611815\\
 \maketitle
 
 \begin{abstract}
-%#TODO
+\emph{A Little Riscy} is a minimalistic superscalar RISC-V processor featuring parallel execution of ALU and load/store instructions.
 \end{abstract}
 
 \section{Introduction}
-The open RISC-V instruction set architecture has gained significant popularity both in academia and in industry. Within the \emph{Advanced Computer Architecture} course at TU Wien, a minimalistic superscalar RISC-V processor called \emph{A Little Riscy} has been designed. It implements the RISC-V RV32I instruction set and allows parallel execution of ALU and load/store instructions with in-order dual issue.
+The open RISC-V instruction set architecture \cite{risc-v} has gained significant popularity both in academia and in industry. Within the \emph{Advanced Computer Architecture} course at TU Wien, a minimalistic superscalar RISC-V processor called \emph{A Little Riscy} has been designed. It implements the RISC-V RV32I instruction set and allows parallel execution of ALU and load/store instructions with in-order dual issue.
 
 Due to the limited scope of this project, several instruction level parallelism techniques were not implemented. These include branch prediction and speculative execution as well as out-of-order issuing.
 
@@ -87,9 +92,7 @@ This report covers the implemented architecture of the processor in Section~\ref
 
 The implemented processor follows the architecture depicted in Figure~\ref{fig:basic_arch}. Thus, it features a Harvard architecture with a four stage pipeline (Fetch, Dispatch, Execute, Write Back) with an ALU and a load/store unit in parallel in the execution stage. In order to utilise the parallel execution units, two instructions per cycle are fetched, enqueued, dequeued and dispatched respectively. The whole design was implemented using the \emph{Chisel} hardware description language.
 
-%# TODO move?
 As the evaluation of the processor was conducted with rather simple single-threaded programs (cf. Section~\ref{sec:eval}), the following instructions were not implemented and thus interpreted as NOP: FENCE, ECALL, EBREAK. Otherwise, \emph{A Little Riscy} is except for some memory limitations (cf. Section~\ref{sec:memory}) compliant with the RV32I instruction set.
-
 
 \subsection{Fetch Unit}
 The fetch unit loads two instructions per cycle from the instruction memory and places them into the instruction queue. Additionally, it administrates the PC. In case the queue is full, the whole fetching process is stalled.
@@ -102,18 +105,68 @@ Furthermore, it implements all control flow transfer instructions. This implies 
 
 The latter can in principle be mitigated using branch prediction and speculative execution techniques, however this was outside the scope of this project.
 
+In case a jump or branch instruction is dequeued, the fetch unit performs the following steps.
+\begin{itemize}
+	\item Stall the pipeline (by scheduling NOPs)\footnote{The instruction loaded from the instruction memory is still dispatched in case its PC is lower than the one of the branch instruction.}.
+	\item Wait for the dispatcher to report a flushed pipeline (i.e. all register values are written).
+	\item Decode the branch instruction, calculate the target and determine whether the branch is taken.
+	\item Enqueue an ADDI instruction writing the address of the instruction after the jump (only applicable for jumps).
+	\item Continue with regular fetch operation.
+\end{itemize}
+
 \subsection{Instruction Queue}
 The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in \cite{schoeberl}) with a width of $96$~bits ($2\times32$~bits instruction, $32$~bits PC) and a depth of $4$. This brings the limitation that only the two instructions being enqueued together can be dequeued at the same time. In case of structural hazards (i.e. only one of the loaded instructions can be issued), this leads to a serialised processing.
 
-\subsection{Dispatcher}
-% Details & Discussion Dispatcher (why no Tomasulo?)
+\subsection{Dispatcher} \label{sec:dispatch}
 
-\subsection{Execution Units}
+
+The dispatcher dequeues two instructions and issues them to the execution units (ALU and Load/Store). It is of utmost importance, that structural and data hazards are resolved beforehand. This is done by the means of operand forwarding and stalling of conflicting instructions.
+
+The treatment of structural hazards is done as the following: In case two instructions for the same execution unit or with identical destination register are dequeued, the first one is issued while the second is stalled in special stall registers (s. Figure~\ref{fig:dispatcher}). In the next cycle, no new instructions are dequeued and the stalled instruction is issued.
+
+Afterwards, the instructions are decoded (in parallel for ALU and Load/Store), then data hazards can be treated. This is done by comparing the operand register addresses with the destination register of instructions in the current and the last cycle. In case there is a data hazard related to an instruction dispatched in the last cycle, operand forwarding can be used to resolve this issue without stalling the pipeline\footnote{This is not the case for the standard five stage RISC pipeline proposed in~\cite{HP}.} So in this case, the dispatcher only has to calculate the forwarding signals shown in Figure\ref{fig:dispatcher}.
+
+However, in case instructions decoded during the same cycle impose some ordering constraints, the instruction with the higher PC has to be stalled. This is done in the same fashion as the instruction stalling for structural hazards and delays instructions for one cycle.
+
+In principle, all aforementioned hazards can be resolved by implementing an dynamic scheduling approach like Tomasulo´s algorithm. However, this is not suitable for the chosen architecture. This is due to the common data bus, which broadcasts the results of all calculations to the reservation stations and the register bank. This bus need some arbitration policy to prevent two execution units from broadcasting their results simultaneously. However, in the case of \emph{A Little Riscy} both execution units generate one result per cycle respectively\footnote{This is not the case for floating point units, where individual instructions usually take multiple cycles.}. Thus, the bandwidth of the basic single-word bus is not sufficient. This leads to a major bottleneck for the whole pipeline.
+
+
+
+
+%#TODO two word CDB?
+
+%# TODO discuss theoretical performance (somewhere)
+
+%# TODO figure Dispatcher (high level)
+
+\begin{figure}
+	\centering
+	\includegraphics[width=7.8cm]{basic_architecture.PNG}
+	\caption{}
+	\label{fig:dispatcher}
+\end{figure}
+
+\subsection{Arithmetic Logic Unit}
+
+This execution unit implements all instructions listed in Section~$2.4$ of the RISC-V Specification~\cite{risc-v}. The LUI and the AUIPC instruction as well as the operand forwarding described in Section~\ref{sec:dispatch} require a dynamic allocation of the operands. This is achieved by the means of multiplexers with select signals created by the dispatcher. This is depicted in Figure~\ref{fig:alu}.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=6cm]{alu_mux.png}
+	\caption{ALU with input multiplexers for operand forwarding}
+	\label{fig:alu}
+\end{figure}
+
+\subsection{Load/Store Unit} \label{sec:load_store}
 
 \subsection{Memory System} \label{sec:memory}
-% Instruction and Data, addressing constraints
+
+%#TODO max pls check
+As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory holds $128$ word (and thus instructions) and is only word addressable. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words.
 
 \section{Evaluation} \label{sec:eval}
+
+\subsection{Benchmarks}
 
 %#TODO used test code (in C)
 
@@ -121,13 +174,13 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 
 %# TODO results in tabular form
 
-\begin{table} [h]
+\begin{table}
 	\caption{}
 	\centering
 	\begin{tabular}{l c}
 			Benchmark & IPC \\
 		\midrule
-			xx & yy\\
+			x & y\\
 	\end{tabular}
 	
 	
@@ -136,11 +189,13 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 
 %# TODO discussion of results
 
-%# TODO FPGA evaluation, resource consumption
-An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Figure~\ref{tab:results}. %#TODO discussion
 
-The maximal achievable clock frequency is \SI{28.42}{\MHz}. %# TODO limited by dispatcher
-\begin{table} [h]
+\subsection{FPGA Evaluation}
+
+An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Figure~\ref{tab:resources}. %#TODO discussion
+
+The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers). %# TODO how to improve?
+\begin{table}
 	\caption{Resource consumption of the different units on the target FPGA}
 	\centering
 	\begin{tabular}{l c c c}
@@ -157,7 +212,7 @@ The maximal achievable clock frequency is \SI{28.42}{\MHz}. %# TODO limited by d
 		\midrule
 			Total & 7263 & 9854 & 17117 \\
 	\end{tabular}
-	\label{tab:results}
+	\label{tab:resources}
 \end{table}
 
 
