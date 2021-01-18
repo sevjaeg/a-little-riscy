@@ -1,19 +1,24 @@
-int calculate(int a, int b, int c, int d);
+# define WIN 1
 
-int A = 1;
-int B = 6;
-int C = 22;
-int D = 5;
+# if WIN
+#include <stdio.h>
+# endif
+
+int A = 13;
+int B = 2;
+int C = 11;
+int D = 7;
 
 int main() {
-	int x = calculate(A, B, C, D);
-	return x;
-}
-
-int calculate(int a, int b, int c, int x) {
-	int d = a + c;
-	int e = c - b;
-	int f = e << 3;
-	int g = e + x;
-	return g + f - d;
+	int a = A;
+	int b = B;
+	int c = C;
+	int d = D;
+	int r =  ((((a+5-b) << 3) >> b) - ((c | a) - 9)) ^ (d+2);
+	
+#if WIN
+	printf("%d\n", r);
+#endif
+	
+	return r;
 }

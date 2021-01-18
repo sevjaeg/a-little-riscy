@@ -167,7 +167,9 @@ class Dispatcher extends Module {
         is("b0010011".U) { // ALU Immediate
             val alternateFunctionBit = Wire(UInt(1.W))
             aluHasImmediate := true.B
-            aluImmediate := Cat(bitsImmAlu, bitsR2Alu)
+            val immSigned = Wire(SInt(32.W))
+            immSigned := Cat(bitsImmAlu, bitsR2Alu).asSInt()  // sign-extend immediate
+            aluImmediate := immSigned.asUInt()
             alternateFunctionBit := false.B
             when(bitsFunctionAlu === "b101".U) {  // Right Shift (logical or arithmetic)
                 alternateFunctionBit := bitsImmAlu(5)

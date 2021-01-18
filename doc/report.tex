@@ -79,12 +79,13 @@ Mat.Nr. 01611815\\
 
 \maketitle
 
+%#TODO
 \begin{abstract}
 \emph{A Little Riscy} is a minimalistic superscalar RISC-V processor featuring parallel execution of ALU and load/store instructions.
 \end{abstract}
 
 \section{Introduction}
-The open RISC-V instruction set architecture \cite{risc-v} has gained significant popularity both in academia and in industry. Within the \emph{Advanced Computer Architecture} course at TU Wien, a minimalistic superscalar RISC-V processor called \emph{A Little Riscy} has been designed. It implements the RISC-V RV32I instruction set and allows parallel execution of ALU and load/store instructions with in-order dual issue.
+The open RISC-V instruction set architecture \cite{risc-v} has gained significant popularity both in academia and in industry. Within the \emph{Advanced Computer Architecture} course at TU Wien, a minimalistic superscalar RISC-V processor called \emph{A Little Riscy} has been designed. It implements the RV32I instruction set and allows parallel execution of ALU and load/store instructions with in-order dual issue.
 
 Due to the limited scope of this project, several instruction level parallelism techniques were not implemented. These include branch prediction and speculative execution as well as out-of-order issuing.
 
@@ -98,9 +99,9 @@ This report covers the implemented architecture of the processor in Section~\ref
 \end{figure}
 
 \section{Implementation} \label{sec:implementation}
-The implemented processor follows the architecture depicted in Figure~\ref{fig:basic_arch}. Thus, it features a Harvard architecture with a four stage pipeline (Fetch, Dispatch, Execute, Write Back) with an ALU and a load/store unit in parallel in the execution stage. In order to utilise the parallel execution units, two instructions per cycle are fetched, enqueued, dequeued and dispatched respectively. The whole design was implemented using the \emph{Chisel} hardware description language.
+The implemented processor follows the architecture depicted in Figure~\ref{fig:basic_arch}. Thus, it features a Harvard architecture with a four stage pipeline (Fetch, Dispatch, Execute, Write Back) with an ALU and a load/store unit in parallel in the execution stage. In order to utilise the parallel execution units, two instructions per cycle are fetched, enqueued, dequeued and dispatched respectively. The whole design was implemented using the Chisel hardware description language.
 
-As the evaluation of the processor was conducted with rather simple single-threaded programs (cf. Section~\ref{sec:eval}), the following instructions were not implemented and thus interpreted as NOP: FENCE, ECALL, EBREAK. Otherwise, \emph{A Little Riscy} is except for some memory limitations (cf. Section~\ref{sec:memory}) compliant with the RV32I instruction set.
+As the evaluation of the processor was conducted with rather simple single-threaded programs (cf. Section~\ref{sec:eval}), the following instructions were not implemented and are thus interpreted as NOP: FENCE, ECALL, EBREAK. Otherwise, \emph{A Little Riscy} is except for some memory limitations (cf. Section~\ref{sec:memory}) compliant with the RV32I instruction set.
 
 \subsection{Fetch Unit}
 The fetch unit loads two instructions per cycle from the instruction memory and places them into the instruction queue. Additionally, it administrates the PC. In case the queue is full, the whole fetching process is stalled.
@@ -127,7 +128,6 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 
 \subsection{Dispatcher} \label{sec:dispatch}
 
-%# TODO figure Dispatcher (high level)
 \begin{figure}
 	\centering
 	\includegraphics[width=5cm]{dispatcher.png}
@@ -144,9 +144,6 @@ Afterwards, the instructions are decoded (in parallel for ALU and Load/Store), t
 However, in case instructions decoded during the same cycle impose some ordering constraints, the instruction with the higher PC has to be stalled. This is done in the same fashion as the instruction stalling for structural hazards and delays instructions for one cycle.
 
 In principle, all aforementioned hazards can be resolved by implementing an dynamic scheduling approach like Tomasulo´s algorithm. However, this is not suitable for the chosen architecture. This is due to the common data bus, which broadcasts the results of all calculations to the reservation stations and the register bank. This bus need some arbitration policy to prevent two execution units from broadcasting their results simultaneously. However, in the case of \emph{A Little Riscy} both execution units generate one result per cycle respectively\footnote{This is not the case for floating point units, where individual instructions usually take multiple cycles.}. Thus, the bandwidth of the basic single-word bus is not sufficient. This leads to a major bottleneck for the whole pipeline.
-
-%#TODO two word CDB?
-
 
 \subsection{Arithmetic Logic Unit}
 This execution unit implements all instructions listed in Section~$2.4$ of the RISC-V Specification~\cite{risc-v}. The LUI and the AUIPC instruction as well as the operand forwarding described in Section~\ref{sec:dispatch} require a dynamic allocation of the operands. This is achieved by the means of multiplexers with select signals created by the dispatcher. This is depicted in Figure~\ref{fig:alu}.
@@ -183,10 +180,28 @@ Thus, efficient code for \emph{A Little Riscy} consist of interleaved load/store
 
 \subsection{Benchmarks}
 
-In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. The only modifications made to the resulting instructions were replacing the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory by simpler load immediate instructions.
+In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. The only modifications made to the resulting instructions were replacing the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory by simpler load immediate instructions. All experiments were conducted in a Chisel tester based simulation environment.
  
-%#TODO first?
-The code for the first benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one adding \verb|i+1| to elements of an array and the second one summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
+Listing~\ref{code:alu}
+
+% TODO
+\begin{lstlisting}[language=C, caption=Code for the ALU benchmark, label=code:alu]
+	int A = 13;
+	int B = 2;
+	int C = 11;
+	int D = 7;
+
+	int main() {
+		int a = A;
+		int b = B;
+		int c = C;
+		int d = D;
+		int r =  ((((a+5-b) << 3) >> b) -
+				((c | a) - 9)) ^ (d+2);
+	}
+\end{lstlisting}
+
+The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one adding \verb|i+1| to elements of an array and the second one summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
 
 \begin{lstlisting}[language=C, caption=Code for the loop benchmark, label=code:loop]
 	int N = 4;
@@ -206,14 +221,9 @@ The code for the first benchmark is depicted in Listing~\ref{code:loop}. It cons
 	}
 \end{lstlisting}
 
-%#TODO used test code (in C)
-
-%# TODO used compiler (incl. flags) and rearrangements, used simulation environment
-
-%# TODO results in tabular form
-
-
 Table~\ref{tab:results}
+
+Note that the latency of the pipeline is subtracted from the measured number of cycles in order to measure independent of the length of the code. Thus, the best achievable IPC is $2$.
 
 \begin{table} [h]
 	\caption{Benchmarking results}
@@ -221,8 +231,8 @@ Table~\ref{tab:results}
 	\begin{tabular}{l c c c}
 			Benchmark & Instructions & Cycles & IPC \\
 		\midrule
-			ALU & & & \\
-			Loop & 45 & 99 & 0.45 \\
+			ALU & 13 & 13 & 1 \\
+			Loop & 45 & 93 & 0.48 \\
 			Loop Unrolled & & & \\
 			Mix & & & 
 	\end{tabular}
@@ -230,15 +240,6 @@ Table~\ref{tab:results}
 \end{table}
 
 %# TODO discussion of results
-
-
-\subsection{FPGA Evaluation}
-
-An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the processor is shown in Table~\ref{tab:resources}. %#TODO discussion
-
-The high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
-
-The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). %# TODO how to improve?
 
 \begin{table}
 	\caption{Resource consumption of the different units on the target FPGA}
@@ -260,7 +261,13 @@ The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path ru
 	\label{tab:resources}
 \end{table}
 
+\subsection{FPGA Evaluation}
 
+An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the implemented processor is shown in Table~\ref{tab:resources}. 
+%# TODO more discussion?
+The high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
+
+The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a way to increase the clock.
 
 \section{Conclusion and Outlook} \label{sec:conclusion}
 
