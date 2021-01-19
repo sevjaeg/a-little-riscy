@@ -37,7 +37,7 @@ class Registers extends Module {
         registers(io.portAlu.write.rd) := io.portAlu.write.value
     }
     when(io.portLoadStore.write.rd =/= 0.U) {
-        registers(io.portLoadStore.write.value) := io.portLoadStore.write.value
+        registers(io.portLoadStore.write.rd) := io.portLoadStore.write.value
     }
 
 

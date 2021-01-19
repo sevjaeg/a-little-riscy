@@ -7,7 +7,7 @@ import chisel3.iotesters.PeekPokeTester
  */
 class LittleRiscyTester(dut: LittleRiscy) extends PeekPokeTester(dut) {
     var addr: Int = 2
-    for(i <- 0 to 300) {  // clock cycles
+    for(i <- 0 to 150) {  // clock cycles
         step(1)
 
     }

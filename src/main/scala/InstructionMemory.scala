@@ -11,14 +11,19 @@ class InstructionMemory extends Module {
     val mem = Reg(Vec(I_MEM_SIZE, UInt(32.W)))  // no reset
 
     // Read instructions from file
-    val fileName = "test_sw/instructions_loop.txt"
+    val fileName = "test_sw/instructions_loop_unrolled.txt"
     val bufferedSource = scala.io.Source.fromFile(fileName)
     var i = 0
-    for (line <- bufferedSource.getLines()) {
-        val instruction : String = "h".concat(line.replaceAll(" ", "").substring(6, 14))
-        mem(i) := instruction.U
-        i = i + 1
-        // println(instruction)
+    for (lineRaw <- bufferedSource.getLines()) {
+        val line : String = lineRaw.replaceAll(" ", "")
+        if (line.length() > 14) {
+            if (line(5) == ':' && line.substring(0, 5) != "XXXXX") {
+                val instruction: String = "h".concat(line.substring(6, 14))
+                mem(i) := instruction.U
+                i = i + 1
+                // println(instruction)
+            }
+        }
     }
     bufferedSource.close()
 
