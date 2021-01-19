@@ -1,6 +1,6 @@
 int inc (int i);
 
-int N = 4;
+int N = 5;
 
 int main() {
 	int n = N;
