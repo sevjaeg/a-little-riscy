@@ -170,7 +170,7 @@ From the previous sections, the following statements about the theoretically ach
 	\item As the data memory is implemented as register, there is no memory delay, so load/store instructions take as long as ALU instructions.
 	\item In the absence of pipelining hazards, two instructions per cycle can be executed, thus a IPC of $2$ is the upper bound for this processor.
 	\item Instructions with data hazards can be executed without any additional delay as long as they are not fetched simultaneously.
-	\item Branching requires flushing the pipeline and thus introduces significant idle time.
+	\item Branching requires completion of all previous instructions and thus introduces significant idle time.
 	\item The instruction queue adds latency to the pipeline, this is unfavourable in the beginning and during branches.
 \end{itemize}
 

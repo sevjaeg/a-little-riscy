@@ -11,7 +11,7 @@ class InstructionMemory extends Module {
     val mem = Reg(Vec(I_MEM_SIZE, UInt(32.W)))  // no reset
 
     // Read instructions from file
-    val fileName = "test_sw/instructions_alu.txt"
+    val fileName = "test_sw/instructions_loop_unrolled.txt"
     val bufferedSource = scala.io.Source.fromFile(fileName)
     var i = 0
     for (lineRaw <- bufferedSource.getLines()) {
