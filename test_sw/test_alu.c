@@ -1,4 +1,4 @@
-# define WIN 1
+# define WIN 0
 
 # if WIN
 #include <stdio.h>

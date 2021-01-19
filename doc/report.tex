@@ -139,7 +139,7 @@ The dispatcher dequeues two instructions and issues them to the execution units 
 
 The treatment of structural hazards is done as the following: In case two instructions for the same execution unit or with identical destination register are dequeued, the first one is issued while the second is stalled in special stall registers (s. Figure~\ref{fig:dispatcher}). In the next cycle, no new instructions are dequeued and the stalled instruction is issued.
 
-Afterwards, the instructions are decoded (in parallel for ALU and Load/Store), then data hazards can be treated. This is done by comparing the operand register addresses with the destination register of instructions in the current and the last cycle. In case there is a data hazard related to an instruction dispatched in the last cycle, operand forwarding can be used to resolve this issue without stalling the pipeline\footnote{This is not the case for the standard five stage RISC pipeline proposed in~\cite{HP}.} So in this case, the dispatcher only has to calculate the forwarding signals shown in Figure\ref{fig:dispatcher}.
+Afterwards, the instructions are decoded (in parallel for ALU and Load/Store), then data hazards can be treated. This is done by comparing the operand register addresses with the destination register of instructions in the current and the last cycle. In case there is a data hazard related to an instruction dispatched in the last cycle, operand forwarding can be used to resolve this issue without stalling the pipeline\footnote{This is not the case for the standard five stage RISC pipeline proposed in~\cite{HP}.} So in this case, the dispatcher only has to calculate the forwarding signals shown in Figure~\ref{fig:dispatcher}.
 
 However, in case instructions decoded during the same cycle impose some ordering constraints, the instruction with the higher PC has to be stalled. This is done in the same fashion as the instruction stalling for structural hazards and delays instructions for one cycle.
 
@@ -162,7 +162,7 @@ The load/store unit handles all accesses to the data memory. It implements all r
 The register bank consists in compliance with the RISC-V reference manual out of 32 general purpose registers (x0 is always set to zero) and the program counter. The architecture demands six read ports (two for the ALU, two for the load/store unit and two for the fetch unit) and two write ports (one for ALU and load/store unit respectively).
 
 \subsection{Memory System} \label{sec:memory}
-As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory holds $128$ word (and thus instructions) and is only word addressable. Due to their small size, both can be implemented as registers. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words.
+As \emph{A Little Riscy} implements a Harvard architecture, instruction and data memory are separated. The instruction memory is a read-only type, holds $128$ word (and thus instructions), and is only word addressable. Due to their small size, both can be implemented as registers. In contrast the $256$ word data memory allows byte, halfword and word addressing, however it assumes aligned halfwords and words both for reads and writes.
 
 \subsection{Performance Considerations} \label{sec:performance}
 From the previous sections, the following statements about the theoretically achievable performance can be made:
@@ -180,9 +180,9 @@ Thus, efficient code for \emph{A Little Riscy} consist of interleaved load/store
 
 \subsection{Benchmarks}
 
-In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. The only modifications made to the resulting instructions were replacing the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory by simpler load immediate instructions. All experiments were conducted in a Chisel tester based simulation environment.
+In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. T. All experiments were conducted in a Chisel Tester based simulation environment.
  
-Listing~\ref{code:alu}
+The first benchmark aims at evaluating the performance of the processor with specialised ALU load. Listing~\ref{code:alu} shows the respective C code which was compiled with the \verb|-O3| flag. Afterwards, the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory were replaced by simpler load immediate instructions.
 
 % TODO
 \begin{lstlisting}[language=C, caption=Code for the ALU benchmark, label=code:alu]
@@ -204,7 +204,7 @@ Listing~\ref{code:alu}
 The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one adding \verb|i+1| to elements of an array and the second one summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
 
 \begin{lstlisting}[language=C, caption=Code for the loop benchmark, label=code:loop]
-	int N = 4;
+	int N = 5;
 	int main() {
 		int n = N;
 		int a[5] = {};
@@ -232,9 +232,8 @@ Note that the latency of the pipeline is subtracted from the measured number of 
 			Benchmark & Instructions & Cycles & IPC \\
 		\midrule
 			ALU & 13 & 13 & 1 \\
-			Loop & 45 & 93 & 0.48 \\
-			Loop Unrolled & & & \\
-			Mix & & & 
+			Loop & 52 & 108 & 0.48 \\
+			Loop Unrolled & 27 & 21 & 1.29
 	\end{tabular}
 	\label{tab:results}
 \end{table}
@@ -247,16 +246,16 @@ Note that the latency of the pipeline is subtracted from the measured number of 
 	\begin{tabular}{l c c c}
 			Entity & LUTs & Registers & Logic Cells \\
 		\midrule
-			ALU & 1951 & 37 & 1988 \\
-			Dispatcher & 355 & 190 & 545 \\
-			Fetch Unit & 516 & 55 & 571 \\
-			Instruction Memory & 121 & 0 & 130 \\
-			Load/Store Unit & 1016 & 69 & 1085 \\
-			Data Memory & 2431 & 8192 & 10622 \\
+			ALU & 1929 & 38 & 1967 \\
+			Dispatcher & 357 & 191 & 548 \\
+			Fetch Unit & 501 & 55 & 556 \\
+			Instruction Memory & 121 & 0 & 121 \\
+			Load/Store Unit & 864 & 69 & 933 \\
+			Data Memory & 2431 & 8192 & 10623 \\
 			Instruction Queue & 12 & 342 & 354 \\
-			Register & 809 & 1056 & 1865 \\
+			Register & 1125 & 1024 & 2149 \\
 		\midrule
-			Total & 7211 & 9856 & 17067 \\
+			Total & 7340 & 9825 & 17165 \\
 	\end{tabular}
 	\label{tab:resources}
 \end{table}
@@ -267,7 +266,7 @@ An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used 
 %# TODO more discussion?
 The high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
 
-The maximal achievable clock frequency is \SI{29.51}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a way to increase the clock.
+The maximal achievable clock frequency is \SI{29.1}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a way to increase the clock.
 
 \section{Conclusion and Outlook} \label{sec:conclusion}
 
