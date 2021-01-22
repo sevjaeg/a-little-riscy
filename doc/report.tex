@@ -79,9 +79,8 @@ Mat.Nr. 01611815\\
 
 \maketitle
 
-%#TODO
 \begin{abstract}
-\emph{A Little Riscy} is a minimalistic superscalar RISC-V processor featuring parallel execution of ALU and load/store instructions.
+\emph{A Little Riscy} is a minimalistic superscalar RISC-V processor featuring parallel execution of ALU and load/store instructions. Due to its four-stage pipeline it is able to efficiently handle data hazards, however its performance decreases drastically when branching is involved. Thus, it shows that superscalar processors do not only need parallel execution units, but also compiler support and branch prediction with speculative execution to achieve a high IPC outside artificial mixes of instructions.
 \end{abstract}
 
 \section{Introduction}
@@ -93,7 +92,7 @@ This report covers the implemented architecture of the processor in Section~\ref
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=7.8cm]{basic_architecture.PNG}
+	\includegraphics[width=7cm]{basic_architecture_2.PNG}
 	\caption{Basic structure of the implemented processor \cite{Hamacher}}
 	\label{fig:basic_arch}
 \end{figure}
@@ -103,7 +102,7 @@ The implemented processor follows the architecture depicted in Figure~\ref{fig:b
 
 As the evaluation of the processor was conducted with rather simple single-threaded programs (cf. Section~\ref{sec:eval}), the following instructions were not implemented and are thus interpreted as NOP: FENCE, ECALL, EBREAK. Otherwise, \emph{A Little Riscy} is except for some memory limitations (cf. Section~\ref{sec:memory}) compliant with the RV32I instruction set.
 
-\subsection{Fetch Unit}
+\subsection{Fetch Unit} \label{sec:fetch}
 The fetch unit loads two instructions per cycle from the instruction memory and places them into the instruction queue. Additionally, it administrates the PC. In case the queue is full, the whole fetching process is stalled.
 
 Furthermore, it implements all control flow transfer instructions. This implies the following:
@@ -184,7 +183,6 @@ In order to evaluate the performance of the implemented processor some benchmark
  
 The first benchmark aims at evaluating the performance of the processor with specialised ALU load. Listing~\ref{code:alu} shows the respective C code which was compiled with the \verb|-O3| flag. Afterwards, the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory were replaced by simpler load immediate instructions.
 
-% TODO
 \begin{lstlisting}[language=C, caption=Code for the ALU benchmark, label=code:alu]
 	int A = 13;
 	int B = 2;
@@ -201,7 +199,15 @@ The first benchmark aims at evaluating the performance of the processor with spe
 	}
 \end{lstlisting}
 
-The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one adding \verb|i+1| to elements of an array and the second one summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
+The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one is adding \verb|i+1| to elements of an array and the second one is summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=8.7cm]{vcd_forwarding.png}
+	\caption{Dispatcher signals for operand forwarding in the ALU benchmark}
+	\label{fig:vcd_alu}
+\end{figure}
+
 
 \begin{lstlisting}[language=C, caption=Code for the loop benchmark, label=code:loop]
 	int N = 5;
@@ -221,9 +227,18 @@ The code for the second benchmark is depicted in Listing~\ref{code:loop}. It con
 	}
 \end{lstlisting}
 
-Table~\ref{tab:results}
+The third benchmark uses the code from Listing~\ref{code:loop} again, however it was compiled with the \verb|-O3| flag and some minor rearrangements have been made in order to have a nicely unrolled loop.
 
-Note that the latency of the pipeline is subtracted from the measured number of cycles in order to measure independent of the length of the code. Thus, the best achievable IPC is $2$.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.65\textwidth]{vcd_loop.png}
+	\caption{Dispatcher signals in the loop benchmark. No instructions are scheduled during branches, this leads to significant idle time.}
+	\label{fig:vcd_loop}
+\end{figure*}
+
+
+The benchmarking results are summed up in Table~\ref{tab:results}. Note that the latency of the pipeline is subtracted from the measured number of cycles in order to measure independent of the length of the code. Thus, the best achievable IPC is $2$.
 
 \begin{table} [h]
 	\caption{Benchmarking results}
@@ -238,7 +253,23 @@ Note that the latency of the pipeline is subtracted from the measured number of 
 	\label{tab:results}
 \end{table}
 
-%# TODO discussion of results
+
+The ALU benchmark which consists only of ALU instructions leads to an IPC of $1$. This is due operand forwarding, which is able to handle the occurring data hazards without introducing any delay. This is shown exemplarily in Figure~\ref{fig:vcd_alu}. Note that the load/store unit is idle during the whole benchmark, thus more instructions per cycle are not achievable. 
+
+
+The simple loop benchmark shows the weak spots of the processor. The IPC drops significantly below $1$, this is mainly due to the negative effects of branching (cf. Section~\ref{sec:fetch}). The waveforms in Figure~\ref{fig:vcd_loop} shows one iteration of the first loop and indicates that the pipeline is idle for significant timespans.
+
+The unrolled loop is able to cope with this problem. As branch instructions were removed, the performance is limited by the distribution between ALU and load/store unit instructions. As long as one load/store and one ALU instruction is issued per cycle, the IPC is $2$, it only drops within phases of sequential ALU or load/store instructions or when destination register conflicts occur. This is shown in Figure~\ref{fig:vcd_loop_unrolled}.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=8.7cm]{vcd_loop_unrolled.png}
+	\caption{Dispatcher signals in the unrolled loop benchmark. The first two instructions are both load/store instructions, thus they are performed sequentially. Afterwards, ALU and load/store instructions are interleaved, the design is exploited efficiently.}
+	\label{fig:vcd_loop_unrolled}
+\end{figure}
+
+
+\subsection{FPGA Evaluation}
 
 \begin{table}
 	\caption{Resource consumption of the different units on the target FPGA}
@@ -260,22 +291,21 @@ Note that the latency of the pipeline is subtracted from the measured number of 
 	\label{tab:resources}
 \end{table}
 
-\subsection{FPGA Evaluation}
-
 An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the implemented processor is shown in Table~\ref{tab:resources}. 
-%# TODO more discussion?
-The high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
+The notably high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
 
 The maximal achievable clock frequency is \SI{29.1}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a way to increase the clock.
 
 \section{Conclusion and Outlook} \label{sec:conclusion}
 
-%# TODO recap 
+During this project, a simple superscalar RISC-V processor with one ALU and one load/store unit in parallel was implemented. It is capable of executing up to two instructions per cycle, however benchmarks have showed that this requires a rather artificial mix of instructions. Especially branching causes significant performance drops as neither branch prediction nor speculative execution were implemented.
 
-%# TODO summary of results, limitations
+In general, it can be concluded that instruction level parallelism is an interesting way to increase the performance of a processor, however there are two requirements that have to be satisfied in order to reach an IPC significantly above $1$:
 
-%# TODO discussion of conceivable extensions to mitigate limitations
-\cite{HP}
+\begin{itemize}
+	\item The compiler has to optimise with the architecture in mind and make sure that instructions are ordered in a suitable way for superscalar machines. This mainly involves suitable loop unrolling and interleaving of different instruction types.
+	\item Going superscalar does not only require parallel execution units, but an all-in approach covering several modern ILP techniques (like the ones presented in.~\cite{HP}). This includes branch prediction and speculative execution in order to reduce the branch penalty as well as out-of-order issuing. However, the come at the cost of additional transistors as well as significantly increased design complexity.
+\end{itemize}
 
 
 \printbibliography
