@@ -134,11 +134,11 @@ The instruction queue is a simple register based FIFO (cf. the \verb|RegFifo| in
 	\label{fig:dispatcher}
 \end{figure}
 
-The dispatcher dequeues two instructions and issues them to the execution units (ALU and Load/Store). It is of utmost importance, that structural and data hazards are resolved beforehand. This is done by the means of operand forwarding and stalling of conflicting instructions.
+The dispatcher dequeues two instructions and issues them to the execution units (ALU and load/store). It is of utmost importance, that structural and data hazards are resolved beforehand. This is done by the means of operand forwarding and stalling of conflicting instructions.
 
 The treatment of structural hazards is done as the following: In case two instructions for the same execution unit or with identical destination register are dequeued, the first one is issued while the second is stalled in special stall registers (s. Figure~\ref{fig:dispatcher}). In the next cycle, no new instructions are dequeued and the stalled instruction is issued.
 
-Afterwards, the instructions are decoded (in parallel for ALU and Load/Store), then data hazards can be treated. This is done by comparing the operand register addresses with the destination register of instructions in the current and the last cycle. In case there is a data hazard related to an instruction dispatched in the last cycle, operand forwarding can be used to resolve this issue without stalling the pipeline\footnote{This is not the case for the standard five stage RISC pipeline proposed in~\cite{HP}.} So in this case, the dispatcher only has to calculate the forwarding signals shown in Figure~\ref{fig:dispatcher}.
+Afterwards, the instructions are decoded (in parallel for ALU and load/store), then data hazards can be treated. This is done by comparing the operand register addresses with the destination register of instructions in the current and the last cycle. In case there is a data hazard related to an instruction dispatched in the last cycle, operand forwarding can be used to resolve this issue without stalling the pipeline\footnote{This is not the case for the standard five stage RISC pipeline proposed in~\cite{HP}.} So in this case, the dispatcher only has to calculate the forwarding signals shown in Figure~\ref{fig:dispatcher}.
 
 However, in case instructions decoded during the same cycle impose some ordering constraints, the instruction with the higher PC has to be stalled. This is done in the same fashion as the instruction stalling for structural hazards and delays instructions for one cycle.
 
@@ -179,7 +179,7 @@ Thus, efficient code for \emph{A Little Riscy} consist of interleaved load/store
 
 \subsection{Benchmarks}
 
-In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. T. All experiments were conducted in a Chisel Tester based simulation environment.
+In order to evaluate the performance of the implemented processor some benchmarks were conducted. Thereto short C programs were compiled using the \href{https://github.com/riscv/riscv-gnu-toolchain}{RISC-V GNU Compiler Toolchain}. All experiments were conducted in a Chisel Tester based simulation environment.
  
 The first benchmark aims at evaluating the performance of the processor with specialised ALU load. Listing~\ref{code:alu} shows the respective C code which was compiled with the \verb|-O3| flag. Afterwards, the instructions loading the value of the global variables used as input\footnote{This is done in order to exploit the compilers optimiser without losing the actual implementation.} from memory were replaced by simpler load immediate instructions.
 
@@ -199,7 +199,7 @@ The first benchmark aims at evaluating the performance of the processor with spe
 	}
 \end{lstlisting}
 
-The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one is adding \verb|i+1| to elements of an array and the second one is summing up elements. This is compiled with the \verb|-O1| flag. The resulting assembly code is based on branches at the beginnings of the loop sections, thus the control flow is transferred frequently.
+The code for the second benchmark is depicted in Listing~\ref{code:loop}. It consist of two loops, one setting the elements of an array to \verb|i+1| and the second one is summing up its elements. This is compiled with the \verb|-O1| flag. The resulting assembly code contains numerous branch instructions due to the implemented loops. Thus, frequent control flow transfers occur.
 
 \begin{figure}
 	\centering
@@ -227,8 +227,7 @@ The code for the second benchmark is depicted in Listing~\ref{code:loop}. It con
 	}
 \end{lstlisting}
 
-The third benchmark uses the code from Listing~\ref{code:loop} again, however it was compiled with the \verb|-O3| flag and some minor rearrangements have been made in order to have a nicely unrolled loop.
-
+The third benchmark uses the code from Listing~\ref{code:loop} again, however it was compiled with the \verb|-O3| flag, which resulted in an unrolled loop. Some minor rearrangements have been made in order to ensure efficient utilisation by interleaving of ALU and load/store instructions.
 
 \begin{figure*}
 	\centering
@@ -238,7 +237,7 @@ The third benchmark uses the code from Listing~\ref{code:loop} again, however it
 \end{figure*}
 
 
-The benchmarking results are summed up in Table~\ref{tab:results}. Note that the latency of the pipeline is subtracted from the measured number of cycles in order to measure independent of the length of the code. Thus, the best achievable IPC is $2$.
+The benchmarking results are summed up in Table~\ref{tab:results}. Note that the latency of the pipeline is subtracted from the measured number of cycles in order to measure independent of the length of the code. Thus, the maximum theoretically achievable IPC is $2$.
 
 \begin{table} [h]
 	\caption{Benchmarking results}
@@ -254,17 +253,16 @@ The benchmarking results are summed up in Table~\ref{tab:results}. Note that the
 \end{table}
 
 
-The ALU benchmark which consists only of ALU instructions leads to an IPC of $1$. This is due operand forwarding, which is able to handle the occurring data hazards without introducing any delay. This is shown exemplarily in Figure~\ref{fig:vcd_alu}. Note that the load/store unit is idle during the whole benchmark, thus more instructions per cycle are not achievable. 
+The ALU benchmark, which consists only of ALU instructions, leads to an IPC of $1$. Note that the ALU instructions have to be serialised because there is only one ALU available, the load/store unit is idle during the whole benchmark. Thus, more instructions per cycle are not achievable. This maximum could be reached due to the implementation of operand forwarding. This technique enables handling of the occurring data hazards without introducing any delay. This is shown exemplarily in Figure~\ref{fig:vcd_alu}.
 
-
-The simple loop benchmark shows the weak spots of the processor. The IPC drops significantly below $1$, this is mainly due to the negative effects of branching (cf. Section~\ref{sec:fetch}). The waveforms in Figure~\ref{fig:vcd_loop} shows one iteration of the first loop and indicates that the pipeline is idle for significant timespans.
+The simple loop benchmark shows the weak spots of the processor. The IPC drops significantly below $1$, this is mainly due to the negative effects of branching (cf. Section~\ref{sec:fetch}). The waveforms in Figure~\ref{fig:vcd_loop} shows one iteration of the first loop and indicates that branch instructions force the pipeline to be idle for significant timespans.
 
 The unrolled loop is able to cope with this problem. As branch instructions were removed, the performance is limited by the distribution between ALU and load/store unit instructions. As long as one load/store and one ALU instruction is issued per cycle, the IPC is $2$, it only drops within phases of sequential ALU or load/store instructions or when destination register conflicts occur. This is shown in Figure~\ref{fig:vcd_loop_unrolled}.
 
 \begin{figure}
 	\centering
 	\includegraphics[width=8.7cm]{vcd_loop_unrolled.png}
-	\caption{Dispatcher signals in the unrolled loop benchmark. The first two instructions are both load/store instructions, thus they are performed sequentially. Afterwards, ALU and load/store instructions are interleaved, the design is exploited efficiently.}
+	\caption{Dispatcher signals in the unrolled loop benchmark. The first two instructions are both load/store instructions, they are therefore executed sequentially. Afterwards, ALU and load/store instructions are interleaved, the design is exploited efficiently.}
 	\label{fig:vcd_loop_unrolled}
 \end{figure}
 
@@ -294,7 +292,7 @@ The unrolled loop is able to cope with this problem. As branch instructions were
 An Altera DE2-115 evaluation board featuring an Altera Cyclone IV FPGA was used as hardware platform. The resource usage of the implemented processor is shown in Table~\ref{tab:resources}. 
 The notably high number of logic required for the register bank is due to the high number of read and write ports (cf. Section~\ref{sec:registers}).
 
-The maximal achievable clock frequency is \SI{29.1}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a way to increase the clock.
+The maximum available clock frequency for this design is \SI{29.1}{\MHz}. The critical path runs through the dispatcher (between input and output of the stall registers, s. Figure~\ref{fig:dispatcher}). This is hardly surprising as the dispatcher has a rather complex task. Finer pipelining i.e. splitting the dispatcher into two stages might be a solution to increase the clock frequency.
 
 \section{Conclusion and Outlook} \label{sec:conclusion}
 
